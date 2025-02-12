@@ -1,30 +1,30 @@
-# One Night in the Plaza
+# 广场一夜
 
 ---
 
-***About this tutorial***
+***关于本教程***
 
-*This tutorial is free and open source, and all code uses the MIT license - so you are free to do with it as you like. My hope is that you will enjoy the tutorial, and make great games!*
+*本教程是免费和开源的，所有代码都使用MIT许可证 - 因此您可以自由地使用它。我希望您会喜欢这个教程，并制作出伟大的游戏！*
 
-*If you enjoy this and would like me to keep writing, please consider supporting [my Patreon](https://www.patreon.com/blackfuture).*
+*如果您喜欢这个并希望我继续写作，请考虑支持[我的Patreon](https://www.patreon.com/blackfuture)。*
 
-[![Hands-On Rust](./beta-webBanner.jpg)](https://pragprog.com/titles/hwrust/hands-on-rust/)
+![Hands-On Rust](./beta-webBanner.jpg)](https://pragprog.com/titles/hwrust/hands-on-rust/)
 
 ---
 
-The city level was deliberately messy: the hero is fighting through cramped, sprawling a Dark Elf under-city - facing different noble houses' troops who were also intent upon killing one another. It makes for fast-paced, tight combat. The last part of the city is the plaza - which is meant to offer more of a contrast. A park in the city holds a portal to the Abyss, and only the most affluent/influential dark elves can build here. So despite being underground, it's more of an outdoor city type of feeling.
+城市级别故意弄得混乱：英雄正在穿越狭窄、蔓延的黑暗精灵地下城 - 面对不同贵族房子的军队，他们也在互相残杀。这导致了快速、紧张的战斗。城市的最后一部分是广场 - 它旨在提供对比。城市中的公园有一个通往深渊的传送门，只有最富裕/有影响力的黑暗精灵才能在这里建造。所以，尽管是在地下，但它更像是户外城市的感觉。
 
-So let's think a bit about what makes up the plaza level:
+那么让我们思考一下广场级别由什么组成：
 
-* A decent sized park, defended by some tough baddies. We can add something demonic here for the first time, since we're right next to a portal to their home.
-* Some larger buildings.
-* Statues, fountains and similar niceties.
+* 一个相当大的公园，由一些强大的坏人守卫。由于我们紧邻通往他们家园的传送门，我们可以在这里首次添加一些恶魔化的东西。
+* 一些较大的建筑物。
+* 雕像、喷泉和类似的小饰品。
 
-Continuing to think about dark elves, they aren't really known for their civic planning. They are, at heart, a Chaotic species. So we want to avoid the feeling that they really planned out their city, and meticulously built it to make sense. In fact, not making sense adds to the surreality.
+继续思考黑暗精灵，他们并不真正以他们的城市规划而闻名。他们本质上是一种混沌物种。因此，我们希望避免给人一种他们真的计划了他们的城市，并精心建造以使其有意义的印象。事实上，不按常理出牌增加了超现实感。
 
-## Generating the Plaza
+## 生成广场
 
-Just like we have for other level builders, we need to add a placeholder builder for level `11`. Open `map_builders/mod.rs` and add a call to `dark_elf_plaza` for level 11:
+就像我们对其他级别构建器所做的那样，我们需要为第11级添加一个占位符构建器。打开 `map_builders/mod.rs` 并为第11级添加对 `dark_elf_plaza` 的调用：
 
 ```rust
 pub fn level_builder(new_depth: i32, width: i32, height: i32) -> BuilderChain {
@@ -45,8 +45,7 @@ pub fn level_builder(new_depth: i32, width: i32, height: i32) -> BuilderChain {
     }
 }
 ```
-
-Now open `map_builders/dark_elves.rs` and create the new map builder function---`dark_elf_plaza`. We'll start with generating a BSP interior map; that'll change, but it's good to get something compiling:
+现在打开 `map_builders/dark_elves.rs` 并创建一个新的地图生成器函数——`dark_elf_plaza`。我们将从生成一个BSP内部地图开始；这将会改变，但至少可以让一些东西编译通过：
 
 ```rust
 pub fn dark_elf_plaza(new_depth: i32, width: i32, height: i32) -> BuilderChain {
@@ -61,9 +60,9 @@ pub fn dark_elf_plaza(new_depth: i32, width: i32, height: i32) -> BuilderChain {
 }
 ```
 
-### Deliberately Poor City Planning
+### 故意糟糕的城市规划
 
-Now that we have the exact same map as the previous level, let's build a generator to create the plaza. We'll get started by making a boring, empty map - just to validate that our map builder is working. At the end of `dark_elves.rs`, paste in the following:
+现在我们有了与前一级完全相同的地图，让我们构建一个生成器来创建广场。我们将从制作一个无聊的空地图开始 - 只是为了验证我们的地图构建器是否正常工作。在`dark_elves.rs`文件的末尾，粘贴以下内容：
 
 ```rust
 // Plaza Builder
@@ -89,8 +88,7 @@ impl PlazaMapBuilder {
     }
 }
 ```
-
-You also need to go into the `dark_elf_plaza` and change the initial builder to use it:
+你还需要进入 `dark_elf_plaza` 函数，并将初始构建器更改为使用它：
 
 ```rust
 pub fn dark_elf_plaza(new_depth: i32, width: i32, height: i32) -> BuilderChain {
@@ -105,11 +103,11 @@ pub fn dark_elf_plaza(new_depth: i32, width: i32, height: i32) -> BuilderChain {
 }
 ```
 
-If you run the game now and teleport down to the last level, the "plaza" is a giant open space full of people killing both you and one another. I found it quite entertaining, but it's not what we want.
+如果你现在运行游戏并传送到最后一个级别，"广场"会变成一个巨大的开放空间，充满了互相残杀的生物。我觉得这很有趣，但这并不是我们想要的结果。
 
 ![](./c75-emptymap.jpg)
 
-The plaza needs to be divided into zones, which contain plaza content. That's similar to what we did for Voronoi maps, but we aren't looking to create cellular walls - just areas in which to place content. Let's start by making a basic Voronoi cell area. Extend your map builder to call a new function named `spawn_zones`:
+广场需要被划分为包含广场内容的区域。这类似于我们之前为Voronoi地图所做的事情，但我们不打算创建细胞墙壁，而只是在其中放置内容的区域。让我们开始通过扩展地图构建器来调用一个名为`spawn_zones`的新函数：
 
 ```rust
 impl InitialMapBuilder for PlazaMapBuilder {
@@ -120,8 +118,7 @@ impl InitialMapBuilder for PlazaMapBuilder {
     }
 }
 ```
-
-We'll start by taking our previous Voronoi code, and making it always have 32 seeds and use Pythagoras for distance:
+我们将首先使用我们之前的 Voronoi 代码，使其始终具有 32 个种子并使用勾股定理计算距离：
 
 ```rust
 fn spawn_zones(&mut self, build_data : &mut BuilderMap) {
@@ -156,11 +153,10 @@ fn spawn_zones(&mut self, build_data : &mut BuilderMap) {
         *vid = voronoi_distance[0].0 as i32;
     }
 
-    // Spawning code will go here
+    // 这里将放置生成代码
 }
 ```
-
-At the end of the new `spawn_zones` function, we have an array named `voronoi_membership` that categorizes every tile into one of 32 zones. The zones are guaranteed to be contiguous. Let's write some quick code to count the sizes of each zone to validate our work:
+在新的 `spawn_zones` 函数的末尾，我们有一个名为 `voronoi_membership` 的数组，它将每个图块分类为32个区域中的一个。这些区域保证是连续的。让我们编写一些快速代码来计算每个区域的大小，以验证我们的工作：
 
 ```rust
 // Make a list of zone sizes and cull empty ones
@@ -173,23 +169,19 @@ for zone in 0..32 {
 }
 println!("{:?}", zone_sizes);
 ```
-
-This will give different results every time, but will give a good idea of how many zones we've created and how large they are. Here's the output from a quick test run:
+这将每次产生不同的结果，但可以让我们对创建的区域数量及其大小有一个大致的了解。下面是快速测试运行的结果：
 
 ```
 [(0, 88), (1, 60), (2, 143), (3, 261), (4, 192), (5, 165), (6, 271), (7, 68), (8, 151), (9, 78), (10, 45), (11, 154), (12, 132), (13, 88), (14, 162), (15, 49), (16, 138), (17, 57), (18, 206), (19, 117), (20, 168), (21, 67), (22, 153), (23, 119), (24, 41), (25, 48), (26, 78), (27, 118), (28, 197), (29, 129), (30, 163), (31, 94)]
 ```
 
-So we know that the zone creation works: there are 32 zones, none of which are excessively tiny - although some are quite large. Let's sort the list by size, descending:
-
+所以我们知道区域创建是有效的：有32个区域，没有一个区域过小 - 尽管有些区域相当大。让我们按大小降序排序这个列表：
 ```rust
 zone_sizes.sort_by(|a,b| b.1.cmp(&a.1));
 ```
-
-This yields a weighted "importance" map: the big zones are first, the smaller zones last. We'll use this to spawn content in order of importance. The big "portal park" is guaranteed to be the largest area. Here's the start of our creation system:
-
+这会产生一个加权“重要性”地图：最大的区域排在前面，最小的区域排在最后。我们将根据重要性顺序在这些区域中生成内容。大的“传送门公园”保证是最大的区域。这是我们的创建系统的开始：
 ```rust
-// Start making zonal terrain
+// 开始创建区域地形
 zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
     match i {
         0 => self.portal_park(build_data, &voronoi_membership, *zone),
@@ -197,22 +189,18 @@ zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
     }
 });
 ```
-
-The placeholder signature for `portal_park` is as follows:
-
+`portal_park` 的占位符签名如下：
 ```rust
 fn portal_park(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32], zone: i32) {
 }
 ```
 
-We'll use this pattern to gradually populate the plaza. For now, we'll skip the portal park and add some other features first.
+我们将使用这种模式逐步填充广场。现在，我们将跳过传送门公园并首先添加一些其他特征。
 
-### Solid Rock
-
-Let's start with the simplest: we're going to turn some of the smaller zones into solid rock. These might be areas the elves haven't mined yet, or - more likely - they left them in place to hold the cavern up. We're going to use a feature we haven't touched before: a "match guard". You can make `match` work for "greater than" as follows:
-
+### 坚固的岩石
+我们从最简单的开始：将一些较小的区域转化为坚固的岩石。这些可能是精灵尚未开采的区域，或者更可能是他们留下这些区域来支撑洞穴。我们将使用一个之前未涉及的功能：“match guard”（匹配守卫）。你可以通过以下方式让`match`处理"大于"的情况：
 ```rust
-// Start making zonal terrain
+// 开始创建区域地形
 zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
     match i {
         0 => self.portal_park(build_data, &voronoi_membership, *zone),
@@ -221,9 +209,7 @@ zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
     }
 });
 ```
-
-The actual `fill_zone` function is quite simple: it finds tiles in the zone and turns them into walls:
-
+实际的`fill_zone`函数非常简单：它找到区域内的所有瓦片并将其转化为墙壁：
 ```rust
 fn fill_zone(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32], zone: i32, tile_type: TileType) {
         voronoi_membership
@@ -234,16 +220,15 @@ fn fill_zone(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32]
     }
 ```
 
-This already injects a little life into our map:
-
+这已经为我们的地图注入了一些生机：
 ![](./c75-solidrock.jpg)
 
-### Pools
 
-Caves tend to be dank, wet places. The dark elves probably enjoy a few pools - plazas are known for magnificent pools! Let's extend the "default" matching to sometimes create zone pools:
+### 水池
 
+洞穴往往是阴冷潮湿的地方。黑暗精灵可能会喜欢一些水池——广场以宏伟的水池闻名！让我们扩展"默认"匹配，随机创建区域水池：
 ```rust
-// Start making zonal terrain
+// 开始创建区域地形
 zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
     match i {
         0 => self.portal_park(build_data, &voronoi_membership, *zone),
@@ -257,22 +242,19 @@ zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
             }
         }
     }
-});
-```
-See how if we aren't matching anything else, we roll a dice? If it comes up 1 or 2, we add a pool of varying depth. Actually adding the pool is just like adding solid rock - but we add water instead.
+});```
+注意当我们不匹配其他条件时，会掷骰子？如果结果是1或2，我们会添加不同深度的水池。实际添加水池与添加岩石类似——只是我们改为添加水。
 
-The addition of some water features continues to bring the zone to life:
+添加一些水体特征后，区域更加生动：
 
 ![](./c75-pools.jpg)
 
-### Stalactite Parks
+### 钟乳石公园
+钟乳石（以及它们的双胞胎石笋）是真实洞穴中的自然景观。它们是黑暗精灵公园的完美候选。我们希望在城市中增添一些色彩，所以用草地环绕它们。这些是精心培育的公园，为黑暗精灵的闲暇活动提供隐私空间（你不会想知道细节…）。
 
-Stalactites (and presumably their twin, stalagmites) can be a beautiful feature of real caves. They are a natural candidate for inclusion in a dark elf park. It would be nice to have a bit of color in the city, so let's surround them with grass. They are a carefully cultivated park, offering privacy for whatever dark elves do in their spare time (you don't want to know...).
-
-Add it to the "unknown" zone options:
-
+将其添加到"未知"区域选项中：
 ```rust
-// Start making zonal terrain
+// 开始创建区域地形
 zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
     match i {
         0 => self.portal_park(build_data, &voronoi_membership, *zone),
@@ -289,9 +271,7 @@ zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
     }
 });
 ```
-
-And use a similar function to `fill_zone` to populate each tile in the zone with either grass or a stalactite:
-
+使用与`fill_zone`类似的函数来用草地或钟乳石填充区域：
 ```rust
 fn stalactite_display(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32], zone: i32) {
         voronoi_membership
@@ -307,13 +287,11 @@ fn stalactite_display(&mut self, build_data : &mut BuilderMap, voronoi_membershi
             });
     }
 ```
+### 公园与祭祀区
 
-### Parks & Sacrifice Areas
-
-A few areas of vegetative cover, with seating adds to the park feel. These should be larger areas - that's the dominant theme of the zone. I don't really picture dark elves sitting around listening to a nice concert---so let's go with an altar in the middle, complete with bloodstains. Notice how we're using an "or" statement in our `match` to match both the 2nd and 3rd largest zones:
-
+一些带有座椅的植被区域能增强公园氛围。这些应该是较大的区域——这是该区域的主题。我不认为黑暗精灵会坐着听音乐会，所以让我们在中间设置一个带有血渍的祭坛。注意我们如何在`match`中使用"或"语句来匹配第二和第三大的区域：
 ```rust
-// Start making zonal terrain
+// 开始创建区域地形
 zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
     match i {
         0 => self.portal_park(build_data, &voronoi_membership, *zone),
@@ -332,8 +310,7 @@ zone_sizes.iter().enumerate().for_each(|(i, (zone, _))| {
 });
 ```
 
-Actually populating the park is slightly more convoluted:
-
+实际创建公园的过程稍复杂：
 ```rust
 fn park(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32], zone: i32, seeds: &[(usize, rltk::Point)]) {
     let zone_tiles : Vec<usize> = voronoi_membership
@@ -343,10 +320,10 @@ fn park(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32], zon
         .map(|(idx, _)| idx)
         .collect();
 
-    // Start all grass
+    // 初始全部设为草地
     zone_tiles.iter().for_each(|idx| build_data.map.tiles[*idx] = TileType::Grass);
 
-    // Add a stone area in the middle
+    // 在中心添加石质区域
     let center = seeds[zone as usize].1;
     for y in center.y-2 ..= center.y+2 {
         for x in center.x-2 ..= center.x+2 {
@@ -358,13 +335,13 @@ fn park(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32], zon
         }
     }
 
-    // With an altar at the center
+    // 中心放置祭坛
     build_data.spawn_list.push((
         build_data.map.xy_idx(center.x, center.y),
         "Altar".to_string()
     ));
 
-    // And chairs for spectators
+    // 为观众添加椅子
     zone_tiles.iter().for_each(|idx| {
         if build_data.map.tiles[*idx] == TileType::Grass && crate::rng::roll_dice(1, 6)==1 {
             build_data.spawn_list.push((
@@ -376,24 +353,21 @@ fn park(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32], zon
 }
 ```
 
-We start by collecting a list of available tiles. Then we cover them all in nice grass. Find the center point of the Voronoi zone (it'll be the seed that generated it), and cover that area with road. Spawn an altar in the middle, some random blood stains and a bunch of chairs. It's all spawning we've done before - but pulled together to make a (not entirely pleasant) theme park.
+我们首先收集可用瓦片列表，然后用草地覆盖。找到沃罗诺伊区域的中心点（即生成该区域的种子点），在该区域中心铺设道路。在中心生成祭坛、随机血渍和大量椅子。所有这些生成逻辑共同构成了一个（不太宜人的）主题公园。
 
-The park areas look sufficiently chaotic:
-
+这些公园区域看起来足够混乱：
 ![](./c75-altar.jpg)
 
-### Adding Walkways
+### 添加通道
 
-At this point, there's no guaranty that you can actually traverse the map. It's entirely possible that water and walls will coincide in just the wrong way to block your progress. That's not a good thing! Let's use the system we encountered when we created the first Voronoi builder to identify edges between voronoi zones---and replace the edge tiles with roads. This ensures that there's a pathway between zones, as well as giving a nice honeycomb effect across the map.
+在这一点上，没有保证你实际上可以穿越地图。水和墙壁可能会以正好错误的方式巧合地阻塞你的前进。这不是一件好事！让我们使用我们在创建第一个Voronoi构建器时遇到的系统来识别Voronoi区域之间的边缘——并用道路替换边缘瓦片。这确保了区域之间有通道，同时也在地图上产生了漂亮的六边形效果。
 
-Start by adding a call to the end of `spawn_zones` that calls the road builder:
-
+首先，在 `spawn_zones` 的末尾添加一个调用道路构建器的调用：
 ```rust
-// Clear the path
+// 清除路径
 self.make_roads(build_data, &voronoi_membership);
 ```
-
-Now we actually have to build some roads. Most of this code is the same as the voronoi edge detection. Instead of placing floors inside the zone, we're placing roads on the edge:
+现在我们实际上必须建造一些道路。大部分代码与Voronoi边缘检测相同。我们不是在区域内部放置地板，而是在边缘放置道路：
 
 ```rust
 fn make_roads(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32]) {
@@ -414,21 +388,19 @@ fn make_roads(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32
     }
 }
 ```
-
-With this in place, the map is passable. Roads delineate the edges, without looking too square:
+有了这个，地图就可以通行了。道路勾勒出边缘，而不显得过于方形：
 
 ![](./c75-edgeroads.jpg)
 
-### Cleaning up the Spawns
+### 清理生成物
 
-Currently, the map is *very* chaotic --- and quite likely to kill you very fast. There's big open areas, chock full of baddies, traps (why would you build a trap in a park?), and items strewn around. Chaos is good, but there's such a thing as too much randomness. We'd like to have the map make some sense---in a random sort of way.
+目前，地图非常混乱——而且很可能迅速杀死你。有大型开放区域，充满了坏蛋、陷阱（你为什么会在公园里建陷阱？）和四处散落的物品。混乱是好事，但有一种随机性是过多的。我们希望地图在随机中具有一定的意义。
 
-Let's start by completely removing the random entity spawner from the builder chain:
-
+让我们首先从构建器链中完全移除随机实体生成器：
 ```rust
 pub fn dark_elf_plaza(new_depth: i32, width: i32, height: i32) -> BuilderChain {
-    println!("Dark elf plaza builder");
-    let mut chain = BuilderChain::new(new_depth, width, height, "Dark Elven Plaza");
+    println!("黑暗精灵广场构建器");
+    let mut chain = BuilderChain::new(new_depth, width, height, "黑暗精灵广场");
     chain.start_with(PlazaMapBuilder::new());
     chain.with(AreaStartingPosition::new(XStart::LEFT, YStart::CENTER));
     chain.with(CullUnreachable::new());
@@ -436,27 +408,25 @@ pub fn dark_elf_plaza(new_depth: i32, width: i32, height: i32) -> BuilderChain {
     chain
 }
 ```
+这将给你一个没有敌人的地图，尽管它仍然有一些椅子和祭坛。这是一个“主题公园”地图——所以我们将在给定区域中保留对生成物的控制。它对玩家的帮助很少——我们即将到达终点，所以他们可能已经准备好了！
 
-This gives you an enemy-free map, albeit one that still has some chairs and altars. This is a "theme park" map - so we're going to retain some control over what spawns in a given area. It will be light on assistance to the player---we're nearly at the end, so hopefully they stocked up!
-
-Let's start by putting some monsters in the park/altar areas. One dark elf family or the other is there, leading to clusters of enemies. Now find the `park` function, and we'll extend the "add chairs" section:
-
+让我们开始在公园/祭坛区域放置一些怪物。一个黑暗精灵家族或另一个家族在那里，导致敌人集群。现在找到`park`函数，我们将扩展“添加椅子”部分：
 ```rust
-// And chairs for spectators, and the spectators themselves
+// 为观众添加椅子，以及观众自己
 let available_enemies = match crate::rng::roll_dice(1, 3) {
     1 => vec![
-        "Arbat Dark Elf",
-        "Arbat Dark Elf Leader",
-        "Arbat Orc Slave",
+        "Arbat黑暗精灵",
+        "Arbat黑暗精灵领袖",
+        "Arbat兽人奴隶",
     ],
     2 => vec![
-        "Barbo Dark Elf",
-        "Barbo Goblin Archer",
+        "Barbo黑暗精灵",
+        "Barbo哥布林弓箭手",
     ],
     _ => vec![
-        "Cirro Dark Elf",
-        "Cirro Dark Priestess",
-        "Cirro Spider",
+        "Cirro黑暗精灵",
+        "Cirro黑暗女祭司",
+        "Cirro蜘蛛",
     ]
 };
 
@@ -479,28 +449,24 @@ zone_tiles.iter().for_each(|idx| {
     }
 });
 ```
+我们在这里做了几件新事情。我们随机为公园分配一个所有者——A、B或C组的黑暗精灵。然后我们为每个组制作一个可用的生成列表，并在该公园中生成一些。这确保了公园*开始*时由一个派系拥有。由于他们经常可以看到对方，所以大屠杀即将开始——但至少这是有主题的大屠杀。
 
-We're doing a couple of new things here. We're randomly assigning an owner to the park - A, B or C groups of Dark Elves. Then we make a list of available spawns for each, and spawn a few in that park. This ensures that the park *starts* as owned by one faction. Since they can often see one another, carnage will commence - but at least it's themed carnage.
+我们将把钟乳石画廊和水池留空，没有敌人。它们只是装饰，提供了一个安静的区域来隐藏/休息（看？我们并不是完全不公道！）。
 
-We're going to leave the stalactite galleries and pools empty of enemies. They are just window dressing, and provide a quiet area to hide/rest (see? We're not being totally unfair!).
+### 传送门公园
 
-### The Portal Park
-
-Now that we've got the basic shape of the map down, it's time to focus on the park. The first thing to do is to stop the exit from spawning randomly. Change the basic map builder to not include exit placement:
-
+现在我们已经完成了地图的基本形状，是时候专注于公园了。要做的第一件事是阻止出口随机生成。更改基本地图构建器以不包括出口放置：
 ```rust
 pub fn dark_elf_plaza(new_depth: i32, width: i32, height: i32) -> BuilderChain {
-    println!("Dark elf plaza builder");
-    let mut chain = BuilderChain::new(new_depth, width, height, "Dark Elven Plaza");
+    println!("黑暗精灵广场构建器");
+    let mut chain = BuilderChain::new(new_depth, width, height, "黑暗精灵广场");
     chain.start_with(PlazaMapBuilder::new());
     chain.with(AreaStartingPosition::new(XStart::LEFT, YStart::CENTER));
     chain.with(CullUnreachable::new());
     chain
 }
 ```
-
-That leaves you with no exit at all. We want to place it in the middle of Portal Park. Let's extend the function signature to include the voronoi seeds, and use the seed point to place the exit---just like we did for other parks:
-
+这将使你完全没有出口。我们希望将其放置在传送门公园的中心。让我们扩展函数签名以包括沃罗诺伊种子，并使用种子点放置出口——就像我们对其他公园所做的那样：
 ```rust
 fn portal_park(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32], zone: i32, seeds: &[(usize, rltk::Point)]) {
     let center = seeds[zone as usize].1;
@@ -508,9 +474,7 @@ fn portal_park(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i3
     build_data.map.tiles[idx] = TileType::DownStairs;
 }
 ```
-
-Now, let's make the portal park stand out a bit by covering it in gravel:
-
+现在，让我们通过在公园里覆盖砾石来使传送门公园更加突出：
 ```rust
 fn portal_park(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i32], zone: i32, seeds: &[(usize, rltk::Point)]) {
     let zone_tiles : Vec<usize> = voronoi_membership
@@ -520,20 +484,18 @@ fn portal_park(&mut self, build_data : &mut BuilderMap, voronoi_membership: &[i3
         .map(|(idx, _)| idx)
         .collect();
 
-    // Start all gravel
+    // 全部开始为砾石
     zone_tiles.iter().for_each(|idx| build_data.map.tiles[*idx] = TileType::Gravel);
 
-    // Add the exit
+    // 添加出口
     let center = seeds[zone as usize].1;
     let idx = build_data.map.xy_idx(center.x, center.y);
     build_data.map.tiles[idx] = TileType::DownStairs;
 }
 ```
-
-Next, we'll add some altars around the exit:
-
+接下来，我们将在出口周围添加一些祭坛：
 ```rust
-// Add some altars around the exit
+// 在出口周围添加一些祭坛
 let altars = [
     build_data.map.xy_idx(center.x - 2, center.y),
     build_data.map.xy_idx(center.x + 2, center.y),
@@ -542,19 +504,17 @@ let altars = [
 ];
 altars.iter().for_each(|idx| build_data.spawn_list.push((*idx, "Altar".to_string())));
 ```
+这为通往深渊的出口提供了一个很好的开始。你将出口放在了正确的位置，周围有令人毛骨悚然的祭坛，并且有一个清晰的通道。它也没有风险（除了地图上到处都是精灵互相残杀之外）。
 
-This gives a pretty good start at the exit to Abyss. You have the exit in the right place, creepy altars and a clearly marked approach. It's also devoid of risk (other than the elves killing one another all over the map).
-
-Let's make the exit a little more challenging by adding a boss fight to the exit. It's the last big push before Abyss, so it's a natural spot for it. I randomly generated a demon name, and decided to name the boss "Vokoth". Let's spawn it one tile adjacent to th exit:
+让我们在出口处添加一场Boss战斗，使出口更加具有挑战性。这是通往深渊之前的最后一项大挑战，所以这是一个自然的地点。我随机生成了一个恶魔名字，并决定将Boss命名为“Vokoth”。让我们在出口旁边的一个格子生成它：
 
 ```rust
 let demon_spawn = build_data.map.xy_idx(center.x+1, center.y+1);
 build_data.spawn_list.push((demon_spawn, "Vokoth".to_string()));
 ```
 
-This won't do anything at all until we define Vokoth! We want a tough baddie. Let's take a quick trip down memory lane in `spawns.json` and remind ourselves how we defined the black dragon:
-
-```json
+这段代码不会起任何作用，除非我们定义Vokoth！我们想要一个强大的反派角色。让我们回顾一下在`spawns.json`中如何定义黑龙的：
+```rust
 {
     "name" : "Black Dragon",
     "renderable": {
@@ -593,10 +553,8 @@ This won't do anything at all until we define Vokoth! We want a tough baddie. Le
     ]
 },
 ```
-
-That's a really tough monster, and makes for a good template for the Abyssal demon. Let's clone it (copy/paste time!) and build an entry for Vokoth:
-
-```json
+这是一个非常强大的怪物，可以作为深渊恶魔的好模板。让我们克隆它（复制粘贴时间！）并为Vokoth构建一个条目：
+```rust
 {
     "name" : "Vokoth",
     "renderable": {
@@ -631,23 +589,22 @@ That's a really tough monster, and makes for a good template for the Abyssal dem
     "abilities" : []
 }
 ```
-
-Now if you play the game, you'll find yourself facing a nasty demon monster at the exit to Abyss.
+现在如果你玩游戏，你会在通往深渊的出口处遇到一个讨厌的恶魔怪物。
 
 ![](./c75-vokoth.jpg)
 
-## Wrap-Up
+## 收尾工作
 
-We now have the second-to-last section done! You can battle your way down to the Dark Elf Plaza, and find the gateway to Abyss - but only if you can evade a hulking demon and a horde of elves---with very little in the way of help offered. Next up, we'll begin to build the Abyss.
+我们现在已经完成了倒数第二个部分！你可以战斗到底层到达黑暗精灵广场，并找到通往深渊的 gateway - 但只有在你能够躲避一个庞大的恶魔和一群精灵的情况下——几乎没有任何帮助提供。接下来，我们将开始构建深渊。
 
 ---
 
-**The source code for this chapter may be found [here](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-75-darkplaza)**
+**本章的源代码可以在这里找到[这里](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-75-darkplaza)**
 
 
-[Run this chapter's example with web assembly, in your browser (WebGL2 required)](https://bfnightly.bracketproductions.com/rustbook/wasm/chapter-75-darkplaza)
+[在浏览器中运行本章的示例，使用web assembly (需要WebGL2)](https://bfnightly.bracketproductions.com/rustbook/wasm/chapter-75-darkplaza)
 ---
 
-Copyright (C) 2019, Herbert Wolverson.
+版权所有 (C) 2019, Herbert Wolverson.
 
 ---

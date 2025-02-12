@@ -1,28 +1,27 @@
-# One Night in the City
+# 城市中的一夜
 
 ---
 
-***About this tutorial***
+***关于本教程***
 
-*This tutorial is free and open source, and all code uses the MIT license - so you are free to do with it as you like. My hope is that you will enjoy the tutorial, and make great games!*
+*本教程是免费和开源的，所有代码都使用MIT许可证 - 因此您可以自由地使用它。我希望您会喜欢这个教程，并制作出伟大的游戏！*
 
-*If you enjoy this and would like me to keep writing, please consider supporting [my Patreon](https://www.patreon.com/blackfuture).*
+*如果您喜欢这个教程并希望我继续写作，请考虑支持[我的Patreon](https://www.patreon.com/blackfuture)。*
 
-[![Hands-On Rust](./beta-webBanner.jpg)](https://pragprog.com/titles/hwrust/hands-on-rust/)
+![Hands-On Rust](./beta-webBanner.jpg)](https://pragprog.com/titles/hwrust/hands-on-rust/)
 
 ---
 
-The next level of the game is a dark elven city. The design document is a bit sparse on details, but here's what we know:
+游戏的下一个关卡是一个黑暗精灵城市。设计文档对细节描述不多，但我们知道以下几点：
 
-* It eventually leads to a portal to the Abyss.
-* Dark elves are infighty, back-stabbing maniacs and should behave as such.
-* Dark elven cities are surprisingly city-like, just deep underground.
-* Lighting will be important.
+* 它最终会通往深渊的传送门。
+* 黑暗精灵是喜欢内斗、背后捅刀子的疯子，应该表现出这样的行为。
+* 黑暗精灵城市令人惊讶地像城市一样，只是位于地下深处。
+* 灯光将会很重要。
 
-## Generating a basic city
+## 生成基础城市
 
-The `level_builder` function in `map_builders/mod.rs` controls which map algorithm is called for a given level. Add a placeholder entry for a new map type:
-
+`map_builders/mod.rs`文件中的`level_builder`函数控制了给定层级调用的地图算法。为新的地图类型添加一个占位符条目：
 ```rust
 pub fn level_builder(new_depth: i32, width: i32, height: i32) -> BuilderChain {
     rltk::console::log(format!("Depth: {}", new_depth));
@@ -41,16 +40,12 @@ pub fn level_builder(new_depth: i32, width: i32, height: i32) -> BuilderChain {
     }
 }
 ```
-
-At the top of the same file, add imports for a new builder module:
-
+在同一个文件的顶部，为新的构建器模块添加导入：
 ```rust
 mod dark_elves;
 use dark_elves::*;
 ```
-
-And create the new `map_builders/dark_elves.rs` file with a placeholder builder in it:
-
+并在新的`map_builders/dark_elves.rs`文件中创建一个占位符构建器：
 ```rust
 use super::{BuilderChain, XStart, YStart, AreaStartingPosition, 
     CullUnreachable, VoronoiSpawning,
@@ -68,29 +63,23 @@ pub fn dark_elf_city(new_depth: i32, width: i32, height: i32) -> BuilderChain {
     chain
 }
 ```
+这生成的是一个不太像城市的地图（只是一个BSP内部地图）- 但这是一个很好的开始。我选择这个作为基础构建器，因为它不会浪费任何空间。我喜欢想象这个城市是一个大型互联的房间群，穷人的精灵住房在危险的位置（在顶部）。所以我们将用相对“正常”的黑暗精灵和他们的奴隶来填充这个层级。
 
-That makes a not-at-all city like map (just a bsp interiors map) - but it's a good start. I chose this as the base builder because it doesn't waste any space. I like to imagine that the city is a big warren of interconnected rooms, with the poorer-elf housing in the dangerous spot (at the top). So we'll populate this level with relatively "normal" dark elves, and their slaves.
+## 添加一些黑暗精灵
 
-## Adding some dark elves
-
-If we just wanted to put dark elves everywhere, it would be as simple as adding one line to `spawns.json` in the `spawn_table` section:
-
+如果我们只想到处放置黑暗精灵，只需在`spawns.json`的`spawn_table`部分添加一行即可：
 ```json
 { "name" : "Dark Elf", "weight": 10, "min_depth": 10, "max_depth": 11 }
 ```
+那太无聊了，所以我们不要这样做。我们的黑暗精灵分为*阿巴特部落*、*巴博部落*和*奇罗部落*（A，B，C，明白了吗？）。由于亚拉之护身符的深渊影响，他们陷入了可怕的内部争斗和战争中！我们稍后会担心如何区分这些部落，现在让我们做一些条目来提供三个彼此仇恨的黑暗精灵群体。
 
-That's boring, so let's not do that. Our dark elves are split between *Clan Arbat*, *Clan Barbo*, and *Clan Cirro* (A, B, C, get it?). Thanks to the Abyssal influence of the Amulet of YALA, they are wrought with terrible infighting and war! We'll worry about differentiating the clans in a moment, for now lets make some entries to provide three groups of dark elves who hate one another.
-
-In the `factions` section of `spawns.json`, create three new factions:
-
+在`spawns.json`的`factions`部分，创建三个新的派系：
 ```json
 { "name" : "DarkElfA", "responses" : { "Default" : "attack", "DarkElfA" : "ignore", "DarkElfB" : "attack", "DarkElfC" : "attack" } },
 { "name" : "DarkElfB", "responses" : { "Default" : "attack", "DarkElfB" : "ignore", "DarkElfA" : "attack", "DarkElfC" : "attack" } },
 { "name" : "DarkElfC", "responses" : { "Default" : "attack", "DarkElfC" : "ignore", "DarkElfA" : "attack", "DarkElfB" : "attack" } }
 ```
-
-Notice how they ignore their own clan, and attack the others. That's the key to making a warzone! Our factions system already supports warring groups - we've just not used it extensively. Now find the `mobs` section, and duplicate the "Dark Elf" three times - once for each faction:
-
+注意他们如何忽略自己的部落，并攻击其他部落。这是制造战争的关键！我们的派系系统已经支持交战的群体 - 只是我们还没有广泛使用它。现在找到`mobs`部分，并将“Dark Elf”复制三次 - 每个派系一次：
 ```json
 {
     "name" : "Arbat Dark Elf",
@@ -146,25 +135,21 @@ Notice how they ignore their own clan, and attack the others. That's the key to 
     "level" : 6
 },
 ```
-
-In the spawn table, we want them to appear on level 10:
-
+在生成表中，我们希望它们出现在第10层：
 ```json
 { "name" : "Arbat Dark Elf", "weight": 10, "min_depth": 10, "max_depth": 11 },
 { "name" : "Barbo Dark Elf", "weight": 10, "min_depth": 10, "max_depth": 11 },
 { "name" : "Cirro Dark Elf", "weight": 10, "min_depth": 10, "max_depth": 11 }
 ```
+如果你现在`cargo run`，并且作弊进入第10层（我建议使用上帝模式和传送） - 你会发现自己处于三个部落之间的战争地带。到处都是战斗，他们只是暂停相互残杀，以便谋杀玩家。有大量的混乱 - 混沌之神会感到骄傲。
 
-If you `cargo run` now, and cheat your way down to depth 10 (I recommend god mode, and teleport) - you find yourself in the midst of a warzone between three clans. There's combat everywhere, and they only pause killing one another long enough to murder the player. There's a lovely amount of mayhem - the gods of Chaos would be proud.
+## 部落区分
 
-## Clan Differentiation
+拥有完全相同的部落有点无聊。基本的“黑暗精灵”可以保持不变，但让我们添加一些风味，使部落*感觉*不同。
 
-It's kinda boring having all of the clans be identical. The basic "Dark Elf" can stay the same, but lets add a bit of flavor to make the clans *feel* differentiated.
+### 阿巴特部落
 
-### Clan Arbat
-
-We'll start by making Arbat a different color - a lighter red. Replace the "fg" attribute of their Dark Elves with `#FFAAAA` - a pinkish color. We'll take away their crossbows, also. They are a melee-oriented clan. Replace `Scimitar` with `Scimitar +1`. The modified `Arbat Dark Elf` looks like this:
-
+我们首先将阿巴特部落的颜色改为更浅的红色 - 一种粉红色。将他们的黑暗精灵的"fg"属性替换为`#FFAAAA`。我们还会剥夺他们的弩。他们是近战导向的部落。将`Scimitar`替换为`Scimitar +1`。修改后的`Arbat Dark Elf`如下所示：
 ```json
 {
     "name" : "Arbat Dark Elf",
@@ -184,9 +169,7 @@ We'll start by making Arbat a different color - a lighter red. Replace the "fg" 
     "level" : 6
 },
 ```
-
-Let's also give them leaders - tougher fighters:
-
+让我们也给他们一些领导者 - 更强大的战士：
 ```json
 {
     "name" : "Arbat Dark Elf Leader",
@@ -207,8 +190,7 @@ Let's also give them leaders - tougher fighters:
 },
 ```
 
-They also deserve some orc slaves:
-
+他们也值得拥有一些兽人奴隶：
 ```json
 {
     "name" : "Arbat Orc Slave",
@@ -226,20 +208,17 @@ They also deserve some orc slaves:
     "gold" : "1d8"
 },
 ```
-
-Finally, put these into the spawn table:
-
+最后，将它们放入生成表中：
 ```json
 { "name" : "Arbat Dark Elf", "weight": 10, "min_depth": 10, "max_depth": 11 },
 { "name" : "Arbat Dark Elf Leader", "weight": 7, "min_depth": 10, "max_depth": 11 },
 { "name" : "Arbat Orc Slave", "weight": 14, "min_depth": 10, "max_depth": 11 },
 ```
+他们可能会为他们的近战焦点感到后悔，但我们并不太关心他们的健康！
 
-They are probably going to regret their melee focus, but we aren't too concerned for their health!
+### 巴博部落
 
-### Clan Barbo
-
-Conversely, we'll make Barbo quite missile oriented - and a little more scarce, because that's super-dangerous. We'll also give them a dagger instead of a scimitar, and change their color to orange:
+相反，我们将使巴博部落更加偏向于远程战斗 - 并且更加稀有，因为这是非常危险的。我们还会给他们一把匕首而不是弯刀，并将他们的颜色改为橙色：
 
 ```json
 {
@@ -261,8 +240,7 @@ Conversely, we'll make Barbo quite missile oriented - and a little more scarce, 
 },
 ```
 
-They also get some slaves - this time goblins, with a missile weapon:
-
+他们还有一些奴隶 - 这次是带有远程武器的哥布林：
 ```json
 {
     "name" : "Barbo Goblin Archer",
@@ -281,18 +259,15 @@ They also get some slaves - this time goblins, with a missile weapon:
     "equipped" : [ "Shortbow", "Leather Armor", "Leather Boots" ]
 },
 ```
-
-Finally, update the spawns table to include them:
-
+最后，更新生成表以包括他们：
 ```json
 { "name" : "Barbo Dark Elf", "weight": 9, "min_depth": 10, "max_depth": 11 },
 { "name" : "Barbo Goblin Archer", "weight": 13, "min_depth": 10, "max_depth": 11 },
 ```
 
-### Clan Cirro
+### Clan 部落
 
-We're going to make Cirro powerful and rare. The basic Cirro Dark Elf looks like this:
-
+我们将使Cirro部落强大且稀有。基本的Cirro Dark Elf如下所示：
 ```json
 {
     "name" : "Cirro Dark Elf",
@@ -312,9 +287,7 @@ We're going to make Cirro powerful and rare. The basic Cirro Dark Elf looks like
     "level" : 7
 },
 ```
-
-We'll also give them leaders - priestesses who can web you:
-
+我们还会给他们领导者 - 可以网住你的女祭司：
 ```json
 {
         "name" : "Cirro Dark Priestess",
@@ -333,13 +306,11 @@ We'll also give them leaders - priestesses who can web you:
         "gold" : "3d6",
         "level" : 8,
         "abilities" : [
-            { "spell" : "Web", "chance" : 0.2, "range" : 6.0, "min_range" : 3.0 }
+            { "spell" : "", "chance" : 0.2, "range" : 6.0, "min_range" : 3.0 }
         ]
     },
 ```
-
-Instead of slaves, we'll give them spiders:
-
+不是奴隶，我们将给他们蜘蛛：
 ```json
 {
     "name" : "Cirro Spider",
@@ -366,29 +337,26 @@ Instead of slaves, we'll give them spiders:
     "faction" : "DarkElfC"
 },
 ```
-
-This also requires a spawn table update:
-
+这也需要更新生成表：
 ```json
 { "name" : "Cirro Dark Elf", "weight": 7, "min_depth": 10, "max_depth": 11 },
 { "name" : "Cirro Dark Priestess", "weight": 6, "min_depth": 10, "max_depth": 11 },
 { "name" : "Cirro Spider", "weight": 10, "min_depth": 10, "max_depth": 11 }
 ```
+如果你现在`cargo run`项目，你会发现黑暗精灵们相互残杀 - 并且存在很好的多样性。
 
-If you `cargo run` the project now, you'll find that the dark elves are murdering one another - and there's a good level of variety present.
+## 总结
 
-## Wrap-Up
-
-This has been a short chapter: because most of the pre-requisites were already written. That's a good sign for the engine as a whole: we can now build a very different style of level without much in the way of new code. In the next chapter, we'll advance further into the dark elven city - trying to make more of an open city level. The mayhem will continue!
+这是一章简短的章节：因为大多数先决条件已经写好了。这对整个引擎来说是个好兆头：我们现在可以构建一个非常不同风格的级别，而不需要太多新代码。在下一章中，我们将进一步进入黑暗精灵城市 - 试图制作一个更加开放的城市级别。混乱将继续！
 
 ---
 
-**The source code for this chapter may be found [here](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-74-darkcity)**
+**本章的源代码可以在这里找到 [here](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-74-darkcity)**
 
 
-[Run this chapter's example with web assembly, in your browser (WebGL2 required)](https://bfnightly.bracketproductions.com/rustbook/wasm/chapter-74-darkcity)
+[在浏览器中用web assembly运行本章的示例（需要WebGL2）](https://bfnightly.bracketproductions.com/rustbook/wasm/chapter-74-darkcity)
 ---
 
-Copyright (C) 2019, Herbert Wolverson.
+版权所有 (C) 2019, Herbert Wolverson。
 
 ---

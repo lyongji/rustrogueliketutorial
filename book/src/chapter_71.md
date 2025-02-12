@@ -12,34 +12,30 @@
 
 ---
 
-Most Roguelikes make a big deal of the game log. It gets rolled into the *morgue file* at the end (detailed description of how your run went), it is used to show what's going on in the world, and is invaluable to the hardcore player. We've been using a pretty simple logging setup (thanks to Mark McCaskey's hard work, it's no longer horribly slow). In this chapter, we'll build a good logging system - and use it as the basis for an achievements and progress tracking system. We'll also make the logging GUI a little better.
+大多数Roguelike游戏都非常重视游戏日志。日志会在游戏结束时被整合到*morgue file*中（详细描述了你的游戏过程），它用于显示游戏世界中的情况，对硬核玩家来说是无价之宝。我们一直在使用一个相当简单的日志设置（多亏了Mark McCaskey的辛勤工作，它不再令人痛苦地缓慢）。在本章中，我们将构建一个良好的日志系统 - 并将其作为成就和进度跟踪系统的基础。我们还将改善日志的GUI。
 
-Currently, we add to the game log with a direct call to the data structure. It looks something like this:
-
+目前，我们通过直接调用数据结构来添加到游戏日志中。它看起来像这样：
 ```rust
 log.entries.push(format!("{} hits {}, for {} hp.", &name.name, &target_name.name, damage));
 ```
+这不是一种很好的方法：它要求你必须*直接*访问日志，不提供任何格式化功能，并且要求系统了解日志的内部工作原理。我们也没有将日志作为保存游戏的一部分进行序列化（以及在加载时进行反序列化）。最后，还有很多我们没有记录但可能需要记录的事情；这是因为将日志作为资源包含进来相当烦人。就像效果系统一样，它应该是无缝的、简单的，并且在多线程环境中是安全的（如果你不使用WASM的话）。
 
-This isn't a great way to do it: it requires that you *have* direct access to the log, doesn't provide any formatting whatsoever, and requires that systems know about how the log works internally. We are also not serializing the log as part of saving the game (and de-serializing when we load). Lastly, there's a lot of things we're not logging but could be; that's because including the log as a resource is quite annoying. Like the effects system, it should be seamless, easy, and thread-safe (if you aren't using WASM!).
+本章将纠正这些缺陷。
 
-This chapter will correct these flaws.
+## 构建API
 
-## Building an API
+我们首先将创建一个新的目录，`src/gamelog`。我们将`src/gamelog.rs`的内容移动到其中，并将文件重命名为`mod.rs` - 换句话说，我们创建了一个新的模块。这应该继续正常工作 - 模块的名字并没有改变。
 
-We'll start by making a new directory, `src/gamelog`. We'll move the contents of `src/gamelog.rs` into it and rename the file `mod.rs` - in other words, we make a new module. This should continue to function - the module hasn't changed name.
-
-Append the following to `mod.rs`:
-
+将以下内容追加到`mod.rs`：
 ```rust
 pub struct LogFragment {
     pub color : RGB,
     pub text : String
 }
 ```
+新的`LogFragment`类型将存储日志条目的*片段*。每个片段可以包含一些文本和颜色，允许创建丰富、多彩的日志条目。一组片段可以组成一行日志。
 
-The new `LogFragment` type will store *pieces* of a log entry. Each piece can have some text and a color, allowing for rich, colorful log entries. A group of them together can make up a log line.
-
-Next, we'll make another new file - this time named `src/gamelog/logstore.rs`. Paste the following into it:
+接下来，我们将创建另一个新文件 - 这次命名为`src/gamelog/logstore.rs`。将以下内容粘贴到其中：
 
 ```rust
 use std::sync::Mutex;
@@ -77,23 +73,21 @@ pub fn log_display() -> TextBuilder {
 }
 ```
 
-There's quite a bit to digest here:
+这里需要消化 quite a bit of information:
 
-* At the core, we're using `lazy_static` to define a *global* log entry store. It's a vector of vectors, this time making up fragments. So the outer vector is *lines* in the log, the inner vector constitutes the *fragments* that make up the log. It's protected by a `Mutex`, making it safe to use in a threaded environment.
-* `append_fragment` locks the log, and appends a single fragment as a new line.
-* `append_entry` locks the log, and appends a vector of fragments (a new line).
-* `clear_log` does what it says on the label: it empties the log.
-* `log_display` builds an RLTK `TextBuilder` object, which is a safe way to build lots of text together for rendering, taking into account things like line wrapping. It takes 12 entries, because that's the largest log we can display.
+* 在核心部分，我们使用 `lazy_static` 来定义一个 *全局* 日志条目存储。它是一个向量 of vectors，这次组成 fragments。所以外层向量是日志的 *行*，内层向量构成了日志的 *片段*。它由 `Mutex` 保护，使其在多线程环境中使用安全。
+* `append_fragment` 锁定日志，并将单个片段作为新行追加。
+* `append_entry` 锁定日志，并追加一个片段向量（新行）。
+* `clear_log`如其名所述：清空日志。
+* `log_display` 构建一个 RLTK `TextBuilder` 对象，这是一种安全的构建大量文本以供渲染的方式，考虑了诸如 line wrapping 等因素。它取12个条目，因为那是我能显示的最大日志。
 
-In `mod.rs`, add the following three lines to take care of using the module and exporting parts of it:
-
+在 `mod.rs` 中，添加以下三行代码来处理使用模块和导出其部分：
 ```rust
 mod logstore;
 use logstore::*;
 pub use logstore::{clear_log, log_display};
 ```
-
-That lets us greatly simplify displaying the log. Open `gui.rs`, and find the log drawing code (it's line 248 on the example). Replace the log drawing with:
+这使我们大大简化了显示日志的过程。打开 `gui.rs`，找到日志绘制代码（在示例中是第248行）。用以下代码替换日志绘制：
 
 ```rust
 // Draw the log
@@ -102,9 +96,9 @@ block.print(&gamelog::log_display());
 block.render(&mut rltk::BACKEND_INTERNAL.lock().consoles[0].console);
 ```
 
-This specifies the exact location of the log text block, as an RLTK `TextBlock` object. Then it prints the results of `log_display()` to the block, and renders it onto console zero (the console we are using).
+这指定了日志文本块的确切位置，作为一个RLTK的`TextBlock`对象。然后将`log_display()`的结果打印到该块上，并在控制台零（正在使用的控制台）上进行渲染。
 
-Now, we need a way to add text to the log. The builder pattern is a natural fit; most of the time, we are gradually building up detail in a log entry. Create another file, `src/gamelog/builder.rs`:
+现在，我们需要一种方法向日志中添加文本。构建器模式是一个很自然的选择；在大多数情况下，我们是逐步构建日志条目的细节。创建另一个文件，命名为`src/gamelog/builder.rs`：
 
 ```rust
 use rltk::prelude::*;
@@ -144,17 +138,14 @@ impl Logger {
 }
 ```
 
-This defines a new type, `Logger`. It keeps track of the current output color, and current list of fragments that make up a log entry. The `new` function makes a new one, while `log` submits it to the mutex-protected global variable. You can call `color` to change the current writing color, and `append` to add a string (we're using `ToString`, so no more messy `to_string()` calls everywhere!).
+这定义了一个新的类型 `Logger`。它跟踪当前的输出颜色和组成日志条目的片段列表。`new` 函数创建一个新的实例，而 `log` 函数将日志条目提交到全局互斥变量。你可以调用 `color` 来更改当前写入颜色，`append` 用于添加字符串（我们使用 `ToString`，因此不再需要到处使用麻烦的 `to_string()` 调用！）
 
-In `gamelog/mod.rs`, we want to use and export this module:
-
+在 `gamelog/mod.rs` 中，我们需要使用并导出这个模块：
 ```rust
 mod builder;
 pub use builder::*;
 ```
-
-To see it in action, open `main.rs` and find the lines where we add a new log file to the resources list, along with the line "Welcome to Rusty Roguelike". For now, we'll keep the original - and make use of the new setup to start the log:
-
+要看到它的效果，打开 `main.rs` 并找到我们向资源列表添加新日志文件的位置，以及 "Welcome to Rusty Roguelike" 这一行。现在，我们将保留原始内容 - 并使用新的设置来开始日志：
 ```rust
 gs.ecs.insert(gamelog::GameLog{ entries : vec!["Welcome to Rusty Roguelike".to_string()] });
 gamelog::clear_log();
@@ -164,25 +155,21 @@ gamelog::Logger::new()
     .append("Rusty Roguelike")
     .log();
 ```
-
-That's nice and clean: no need to obtain a resource, and the text/color appending is easy to read! If you `cargo run` now, you'll see a single log entry displayed in color:
+这很干净：无需获取资源，文本/颜色附加易于阅读！如果你现在 `cargo run`，你将看到一个彩色显示的单个日志条目：
 
 ![c71-s1.jpg](c71-s1.jpg)
 
-## Enforcing API usage
+## 强制使用API
 
-Now it's time to break things. In `src/gamelog/mod.rs`, **delete** the following:
-
+现在是时候做一些破坏性的事情了。在`src/gamelog/mod.rs`中，**删除**以下内容：
 ```rust
 pub struct GameLog {
     pub entries : Vec<String>
 }
 ```
+如果你使用的是IDE，你的项目现在可能都是红色的错误提示！我们刚刚删除了旧的日志方式 - 所以*每个*对旧日志的引用现在都是编译错误。这是可以接受的，因为我们要过渡到新的系统。
 
-If you're using an IDE, your project just became a sea of red! We just erased the old way of logging - so *every* reference to the old log is now a compilation failure. That's ok, because we want to transition to the new system.
-
-Starting with `main.rs`, we can delete the references to the old log. Delete the new log line, as well as all of the logging information we added before. Find the `generate_world_map` function, and move the initial log clearing/setup there:
-
+从`main.rs`开始，我们可以删除对旧日志的引用。删除新的日志行，以及之前添加的所有日志信息。找到`generate_world_map`函数，并将初始日志清除/设置移动到这里：
 ```rust
 fn generate_world_map(&mut self, new_depth : i32, offset: i32) {
     self.mapgen_index = 0;
@@ -203,29 +190,25 @@ fn generate_world_map(&mut self, new_depth : i32, offset: i32) {
         .log();
 }
 ```
+如果你现在`cargo build`项目，你将会有很多错误。我们需要逐步更新*所有*日志引用以使用新系统。
 
-If you `cargo build` the project now, you'll have lots of errors. We need to work our way through and update *all* of the logging references to use the new system.
+## 使用API
 
-## Using the API
-
-Open `src/inventory_system/collection_system.rs`. In the `use` statement, remove the reference to `gamelog::GameLog` (it doesn't exist anymore). Remove the `WriteExpect` looking for a the game log (and the matching `mut gamelog` in the tuple). Replace the `gamelog.push` statement with:
-
+打开`src/inventory_system/collection_system.rs`。在`use`语句中，删除对`gamelog::GameLog`的引用（它已经不存在了）。删除寻找游戏日志的`WriteExpect`（以及元组中的匹配`mut gamelog`）。将`gamelog.push`语句替换为：
 ```rust
 crate::gamelog::Logger::new()
-    .append("You pick up the")
+    .append("你捡起了")
     .color(rltk::CYAN)
     .append(
         super::obfuscate_name(pickup.item, &names, &magic_items, &obfuscated_names, &dm)
     )
     .log();
 ```
-
-You need to make basically the same changes to `src/inventory_system/drop_system.rs`. After deleting the import and resource, the log message system becomes:
-
+你需要对`src/inventory_system/drop_system.rs`进行基本相同的更改。删除导入和资源后，日志消息系统变为：
 ```rust
 if entity == *player_entity {
     crate::gamelog::Logger::new()
-        .append("You drop the")
+        .append("你丢弃了")
         .color(rltk::CYAN)
         .append(
             super::obfuscate_name(to_drop.item, &names, &magic_items, &obfuscated_names, &dm)
@@ -233,8 +216,7 @@ if entity == *player_entity {
         .log();
 }
 ```
-
-Likewise, in `src/inventory_system/equip_use.rs`, delete the `gamelog`. Also delete the `log_entries` variable and the loop appending it. There's quite a few log entries to clean up:
+同样，在`src/inventory_system/equip_use.rs`中，删除`gamelog`。同时删除`log_entries`变量和循环追加它的代码。有很多日志条目需要清理：
 
 ```rust
 // Cursed item unequipping
@@ -262,31 +244,29 @@ crate::gamelog::Logger::new()
     .log();
 ```
 
-Likewise, the file `src/hunger_system.rs` needs updating. Once again, remove the `gamelog` and replace the `log.push` lines with equivalents using the new system.
-
+同样，`src/hunger_system.rs`文件也需要更新。再次移除`gamelog`，并用新系统的等效代码替换`log.push`行。
 ```rust
 crate::gamelog::Logger::new()
     .color(rltk::ORANGE)
-    .append("You are no longer well fed")
+    .append("你不再吃得很好")
     .log();
 ...
 crate::gamelog::Logger::new()
     .color(rltk::ORANGE)
-    .append("You are hungry")
+    .append("你饿了")
     .log();
 ...
 crate::gamelog::Logger::new()
     .color(rltk::RED)
-    .append("You are starving!")
+    .append("你正在挨饿！")
     .log();
 ...
 crate::gamelog::Logger::new()
     .color(rltk::RED)
-    .append("Your hunger pangs are getting painful! You suffer 1 hp damage.")
+    .append("你的饥饿感变得痛苦！你受到了1点伤害。")
     .log();
 ```
-
-`src/trigger_system.rs` needs the same treatment. Once again, remove `gamelog` and replace the log entries. We'll use a bit of color highlighting to emphasize traps:
+`src/trigger_system.rs`也需要同样的处理。再次移除`gamelog`，并用新系统的日志条目替换。
 
 ```rust
 crate::gamelog::Logger::new()
@@ -297,148 +277,134 @@ crate::gamelog::Logger::new()
     .log();
 ```
 
-`src/ai/quipping.rs` needs the exact same treatment. Remove `gamelog`, and replace the logging call with:
-
+`src/ai/quipping.rs` 需要进行相同的处理。移除 `gamelog`，并用新的日志记录方式替换：
 ```rust
 crate::gamelog::Logger::new()
     .color(rltk::YELLOW)
     .append(&name.name)
     .color(rltk::WHITE)
-    .append("says")
+    .append("说")
     .color(rltk::CYAN)
     .append(&quip.available[quip_index])
     .log();
 ```
-
-`src/ai/encumbrance_system.rs` has the same changes. Once again, `gamelog` must go away - and the log append is replaced with:
-
+`src/ai/encumbrance_system.rs` 也有相同的更改。再次移除 `gamelog` - 并用新的日志记录方式替换：
 ```rust
 crate::gamelog::Logger::new()
     .color(rltk::ORANGE)
-    .append("You are overburdened, and suffering an initiative penalty.")
+    .append("你负载过重，受到了 Initiative 罚值。")
     .log();
 ```
-
-`src/effects/damage.rs` logs slightly differently, but we can unify the mechanism now. Start by removing the `use crate::gamelog::GameLog;` line. Then replace all of the `log_entries.push` lines with lines that use the new `Logger` interface:
-
+`src/effects/damage.rs` 的日志记录方式略有不同，但我们可以现在统一机制。首先移除 `use crate::gamelog::GameLog;` 这一行。然后替换所有 `log_entries.push` 行为使用新的 `Logger` 接口的行：
 ```rust
 crate::gamelog::Logger::new()
     .color(rltk::MAGENTA)
-    .append("Congratulations, you are now level")
+    .append("恭喜，你现在是等级")
     .append(format!("{}", player_stats.level))
     .log();
 ...
-crate::gamelog::Logger::new().color(rltk::GREEN).append("You feel stronger!").log();
+crate::gamelog::Logger::new().color(rltk::GREEN).append("你感觉更强壮了！").log();
 ...
-crate::gamelog::Logger::new().color(rltk::GREEN).append("You feel healthier!").log();
+crate::gamelog::Logger::new().color(rltk::GREEN).append("你感觉更健康了！").log();
 ...
-crate::gamelog::Logger::new().color(rltk::GREEN).append("You feel quicker!").log();
+crate::gamelog::Logger::new().color(rltk::GREEN).append("你感觉更敏捷了！").log();
 ...
-crate::gamelog::Logger::new().color(rltk::GREEN).append("You feel smarter!").log();
+crate::gamelog::Logger::new().color(rltk::GREEN).append("你感觉更聪明了！").log();
 ```
-
-It is the same again in `src\effects\trigger.rs`; remove `GameLog` and replace the log code with:
-
+在 `src/effects/trigger.rs` 中也是相同的处理；移除 `GameLog`，并用新的日志记录代码替换：
 ```rust
 crate::gamelog::Logger::new()
     .color(rltk::CYAN)
     .append(&ecs.read_storage::<Name>().get(item).unwrap().name)
     .color(rltk::WHITE)
-    .append("is out of charges!")
+    .append("没有剩余的充能了！")
     .log();
 ...
 crate::gamelog::Logger::new()
-    .append("You eat the")
+    .append("你吃了")
     .color(rltk::CYAN)
     .append(&names.get(entity).unwrap().name)
     .log();
 ...
-crate::gamelog::Logger::new().append("The map is revealed to you!").log();
+crate::gamelog::Logger::new().append("地图向你展示了！").log();
 ...
-crate::gamelog::Logger::new().append("You are already in town, so the scroll does nothing.").log();
+crate::gamelog::Logger::new().append("你已经在城镇里了，所以卷轴没有效果。").log();
 ...
-crate::gamelog::Logger::new().append("You are telported back to town!").log();
+crate::gamelog::Logger::new().append("你被传送回了城镇！").log();
 ...
-
-Once again, `src/player.rs` is more of the same. Remove `GameLog`, and replace the log entries with the new builder syntax:
-
+```
+再次，`src/player.rs` 也是相同的处理。移除 `GameLog`，并用新的构建器语法替换日志条目：
 ```rust
 crate::gamelog::Logger::new()
-    .append("You fire at")
+    .append("你朝")
     .color(rltk::CYAN)
     .append(&name.name)
     .log();
 ...
-crate::gamelog::Logger::new().append("There is no way down from here.").log();
+crate::gamelog::Logger::new().append("这里没有下行的路。").log();
 ...
-crate::gamelog::Logger::new().append("There is no way up from here.").log();
+crate::gamelog::Logger::new().append("这里没有上行的路。").log();
 ...
-None => crate::gamelog::Logger::new().append("There is nothing here to pick up.").log(),
+None => crate::gamelog::Logger::new().append("这里没有可以捡起来的东西。").log(),
 ...
-crate::gamelog::Logger::new().append("You don't have enough mana to cast that!").log();
+crate::gamelog::Logger::new().append("你没有足够的法力来施展那个技能！").log();
 ```
-
-It's the same again in `visibility_system.rs`. Once again, delete `GameLog` and replace log pushes with:
-
+在`visibility_system.rs`中也是相同的处理。再次删除`GameLog`，并用新的日志记录方式替换：
 ```rust
 crate::gamelog::Logger::new()
-    .append("You spotted:")
+    .append("你发现了：")
     .color(rltk::RED)
     .append(&name.name)
     .log();
 ```
-
-Once again, `melee_combat_system.rs` needs the same changes: no more `GameLog`, and update the text output to use the new building system:
-
+在`melee_combat_system.rs`中也需要进行相同的更改：不再使用`GameLog`，并更新文本输出以使用新的构建系统：
 ```rust
 crate::gamelog::Logger::new()
     .color(rltk::YELLOW)
     .append(&name.name)
     .color(rltk::WHITE)
-    .append("hits")
+    .append("击中了")
     .color(rltk::YELLOW)
     .append(&target_name.name)
     .color(rltk::WHITE)
-    .append("for")
+    .append("造成")
     .color(rltk::RED)
     .append(format!("{}", damage))
     .color(rltk::WHITE)
-    .append("hp.")
+    .append("点伤害。")
     .log();
 ...
 crate::gamelog::Logger::new()
     .color(rltk::CYAN)
     .append(&name.name)
     .color(rltk::WHITE)
-    .append("considers attacking")
+    .append("考虑攻击")
     .color(rltk::CYAN)
     .append(&target_name.name)
     .color(rltk::WHITE)
-    .append("but misjudges the timing!")
+    .append("但判断时机错误！")
     .log();
 ...
 crate::gamelog::Logger::new()
     .color(rltk::CYAN)
     .append(&name.name)
     .color(rltk::WHITE)
-    .append("attacks")
+    .append("攻击")
     .color(rltk::CYAN)
     .append(&target_name.name)
     .color(rltk::WHITE)
-    .append("but can't connect.")
+    .append("但没有击中。")
     .log();
 ```
+现在你应该对所需的更改有相当好的理解了。如果你查看[源代码](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-71-logging)，我已经对所有其他`gamelog`的实例进行了更改。
 
-You should have a pretty good understanding of the changes requires by now. If you check the [source code](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-71-logging), I've made the changes to all the other instances of `gamelog`.
-
-Once you've made all the changes, you can `cargo run` your game - and see a brightly colored log:
+一旦你完成了所有的更改，你可以`cargo run`你的游戏 - 并看到一个明亮彩色的日志：
 
 ![c71-s2.jpg](c71-s2.jpg)
 
-## Making common logging tasks easier
+## 使日志记录任务更简单
 
-While going through the code, upading log entries - a lot of commonalities appeared. It would be good to enforce some style consistency (and reduce the amount of typing required). We'll add some methods to our log builder (in `src/gamelog/builder.rs`) to help:
-
+在遍历代码时，更新日志条目 - 出现了很多共同点。最好强制执行一些样式一致性（并减少所需的输入量）。我们将在日志构建器中添加一些方法（在`src/gamelog/builder.rs`中）来帮助：
 ```rust
 pub fn npc_name<T: ToString>(mut self, text : T) -> Self {
     self.fragments.push(
@@ -470,49 +436,41 @@ pub fn damage(mut self, damage: i32) -> Self {
     self
 }
 ```
-
-Now we can go through and update some of the log entry code again, using the easier syntax. For example, in `src\ai\quipping.rs` we can replace:
-
+现在我们可以再次遍历一些日志条目代码，使用更简单的语法。例如，在`src\ai\quipping.rs`中，我们可以替换：
 ```rust
 crate::gamelog::Logger::new()
     .color(rltk::YELLOW)
     .append(&name.name)
     .color(rltk::WHITE)
-    .append("says")
+    .append("说")
     .color(rltk::CYAN)
     .append(&quip.available[quip_index])
     .log();
 ```
-
-with:
-
+使用：
 ```rust
 crate::gamelog::Logger::new()
     .npc_name(&name.name)
-    .append("says")
+    .append("说")
     .npc_name(&quip.available[quip_index])
     .log();
 ```
-
-Or in `melee_combat_system.rs`, one can greatly shorted the damage announcement:
-
+或者，在`melee_combat_system.rs`中，可以大大缩短伤害公告：
 ```rust
 crate::gamelog::Logger::new()
     .npc_name(&name.name)
-    .append("hits")
+    .append("击中了")
     .npc_name(&target_name.name)
-    .append("for")
+    .append("造成")
     .damage(damage)
-    .append("hp.")
+    .append("点伤害。")
     .log();
 ```
+再次，我已经遍历了项目源代码并应用了这些增强功能。
 
-Once again, I've gone through the project source code and applied these enhancements.
+## 保存和加载日志
 
-## Saving and Loading the Log
-
-To make saving and loading the log easier, we'll add two helper functions to `gamelog/logstore.rs`:
-
+为了使保存和加载日志更简单，我们将向`gamelog/logstore.rs`添加两个辅助函数：
 ```rust
 pub fn clone_log() -> Vec<Vec<crate::gamelog::LogFragment>> {
     LOG.lock().unwrap().clone()
@@ -524,14 +482,11 @@ pub fn restore_log(log : &mut Vec<Vec<crate::gamelog::LogFragment>>) {
 }
 ```
 
-The first provides a cloned copy of the log. The second empties the log, and appends a new one. You need to open up `gamelog/mod.rs` and add these to the exported functions list:
-
+第一个函数提供了一个日志的克隆副本。第二个函数清空日志，并追加一个新的日志。你需要打开 `gamelog/mod.rs` 并将这些函数添加到导出的函数列表中：
 ```rust
 pub use logstore::{clear_log, log_display, clone_log, restore_log};
 ```
-
-While you're here, we need to add some derivations to the `LogFragment` structure:
-
+在这里，我们还需要为 `LogFragment` 结构体添加一些派生属性：
 ```rust
 use serde::{Serialize, Deserialize};
 
@@ -541,9 +496,7 @@ pub struct LogFragment {
     pub text : String
 }
 ```
-
-Now open `components.rs`, and modify the `DMSerializationHelper` structure to include a log:
-
+现在打开 `components.rs`，并修改 `DMSerializationHelper` 结构体以包含日志：
 ```rust
 #[derive(Component, Serialize, Deserialize, Clone)]
 pub struct DMSerializationHelper {
@@ -551,9 +504,7 @@ pub struct DMSerializationHelper {
     pub log : Vec<Vec<crate::gamelog::LogFragment>>
 }
 ```
-
-Open `saveload_system.rs`, and we'll include the log when we serialize the map:
-
+打开 `saveload_system.rs`，当序列化地图时，我们将包括日志：
 ```rust
 let savehelper2 = ecs
     .create_entity()
@@ -561,9 +512,7 @@ let savehelper2 = ecs
     .marked::<SimpleMarker<SerializeMe>>()
     .build();
 ```
-
-And when we de-serialize the map, we'll also restore the log:
-
+当反序列化地图时，我们还将恢复日志：
 ```rust
 for (e,h) in (&entities, &helper2).join() {
     let mut dungeonmaster = ecs.write_resource::<super::map::MasterDungeonMap>();
@@ -572,13 +521,11 @@ for (e,h) in (&entities, &helper2).join() {
     crate::gamelog::restore_log(&mut h.log.clone());
 }
 ```
+这就是保存/加载日志的全部内容：它与 Serde 配合得很好（在完整的 JSON 上可能有点慢），但效果很好。
 
-That's all there is to saving/loading the log: it works well with Serde (it may be a bit slow on full JSON), but it works well.
+## 计数事件
 
-## Counting Events
-
-As a step towards achievements, we need to be able to count relevant events. Make a new file, `src/gamelog/events.rs`, and paste in the following:
-
+作为实现成就的一步，我们需要能够计数相关事件。创建一个新文件，`src/gamelog/events.rs`，并粘贴以下内容：
 ```rust
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -613,11 +560,9 @@ pub fn get_event_count<T: ToString>(event: T) -> i32 {
     }
 }
 ```
+这与我们存储日志的方式类似：它是一个“懒静态”，有一个互斥锁安全包装。内部是一个`HashMap`，按事件名称索引并包含一个计数器。`record_event`将事件添加到运行总数（如果不存在则创建一个新的）。`get_event_count`返回0或命名计数器的总数。
 
-This is similar to how we are storing the log: it's a "lazy static", with a mutex safety wrapper. Inside is a `HashMap`, indexed by event name and containing a counter. `record_event` adds an event to the running total (or creates a new one if it doesn't exist). `get_event_count` returns either 0, or the total of the named counter.
-
-In `main.rs`, find the main loop handler for `RunState::AwaitingInput` - and we'll extend it to count the number of turns the player has survived:
-
+在`main.rs`中，找到`RunState::AwaitingInput`的主循环处理程序 - 我们将其扩展为计数玩家存活的回合数：
 ```rust
 RunState::AwaitingInput => {
     newrunstate = player_input(self, ctx);
@@ -626,9 +571,7 @@ RunState::AwaitingInput => {
     }
 }
 ```
-
-We should also clear the counter state at the end of `generate_world_map`:
-
+我们还应该在`generate_world_map`的末尾清除计数器状态：
 ```rust
 fn generate_world_map(&mut self, new_depth : i32, offset: i32) {
     self.mapgen_index = 0;
@@ -643,7 +586,7 @@ fn generate_world_map(&mut self, new_depth : i32, offset: i32) {
 
     gamelog::clear_log();
     gamelog::Logger::new()
-        .append("Welcome to")
+        .append("欢迎来到")
         .color(rltk::CYAN)
         .append("Rusty Roguelike")
         .log();
@@ -651,18 +594,16 @@ fn generate_world_map(&mut self, new_depth : i32, offset: i32) {
     gamelog::clear_events();
 }
 ```
-
-To demonstrate that it works, let's display the number of turns the player survived on their death screen. In `gui.rs`, open the function `game_over` and add a turn counter:
-
+为了演示它的工作原理，让我们在玩家的死亡屏幕上显示玩家存活的回合数。在`gui.rs`中，打开`game_over`函数并添加一个回合计数器：
 ```rust
 pub fn game_over(ctx : &mut Rltk) -> GameOverResult {
-    ctx.print_color_centered(15, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Your journey has ended!");
-    ctx.print_color_centered(17, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "One day, we'll tell you all about how you did.");
-    ctx.print_color_centered(18, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "That day, sadly, is not in this chapter..");
+    ctx.print_color_centered(15, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "你的旅程已经结束！");
+    ctx.print_color_centered(17, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "总有一天，我们会告诉你你是如何做到的。");
+    ctx.print_color_centered(18, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "遗憾的是，这一天不是在本章中...");
 
-    ctx.print_color_centered(19, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), &format!("You lived for {} turns.", crate::gamelog::get_event_count("Turn")));
+    ctx.print_color_centered(19, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), &format!("你存活了 {} 回合。", crate::gamelog::get_event_count("Turn")));
 
-    ctx.print_color_centered(21, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), "Press any key to return to the menu.");
+    ctx.print_color_centered(21, RGB::named(rltk::MAGENTA), RGB::named(rltk::BLACK), "按任意键返回菜单。");
 
     match ctx.key {
         None => GameOverResult::NoSelection,
@@ -670,15 +611,13 @@ pub fn game_over(ctx : &mut Rltk) -> GameOverResult {
     }
 }
 ```
-
-If you `cargo run` now, your turns are counted. Here's the results of a run in which I tried to get killed:
+如果你现在`cargo run`，你的回合数将被计数。以下是我尝试被杀死的运行结果：
 
 ![c71-s3.jpg](c71-s3.jpg)
 
-## Bracket Goes Quantity Surveying
+## Bracket 开始统计数量
 
-This is a very flexible system: you can count pretty much anything you like, from anywhere! Let's log how much damage the player takes throughout their game. Open `src/effects/damage.rs` and modify the function `inflict_damage`:
-
+这是一个非常灵活的系统：你可以从任何地方计数几乎所有你想要的东西！让我们记录玩家在整个游戏中受到的伤害。打开`src/effects/damage.rs`并修改`inflict_damage`函数：
 ```rust
 pub fn inflict_damage(ecs: &mut World, damage: &EffectSpawner, target: Entity) {
     let mut pools = ecs.write_storage::<Pools>();
@@ -717,9 +656,7 @@ pub fn inflict_damage(ecs: &mut World, damage: &EffectSpawner, target: Entity) {
     }
 }
 ```
-
-We'll again modify `gui.rs`'s `game_over` function to display damage taken:
-
+我们将再次修改`gui.rs`的`game_over`函数以显示受到的伤害：
 ```rust
 pub fn inflict_damage(ecs: &mut World, damage: &EffectSpawner, target: Entity) {
     let mut pools = ecs.write_storage::<Pools>();
@@ -760,17 +697,15 @@ pub fn inflict_damage(ecs: &mut World, damage: &EffectSpawner, target: Entity) {
     }
 }
 ```
-
-Dying now shows you how much damage you suffered throughout your run:
+现在死亡时会显示你在整个运行中遭受的伤害：
 
 ![c71-s4.jpg](c71-s4.jpg)
 
-You can, of course, extend this to your heart's content. Pretty much everything quantifiable is now trackable, should you so desire.
+当然，你可以根据自己的需要扩展这个功能。几乎所有可量化的东西现在都可以被跟踪，如果你愿意的话。
 
-### Saving and Loading Counters
+### 保存和加载计数器
 
-Add two more functions to `src/gamelog/events.rs`:
-
+在`src/gamelog/events.rs`中添加两个函数：
 ```rust
 pub fn clone_events() -> HashMap<String, i32> {
     EVENTS.lock().unwrap().clone()
@@ -783,9 +718,7 @@ pub fn load_events(events : HashMap<String, i32>) {
     });
 }
 ```
-
-Now open `components.rs`, and modify `DMSerializationHelper`:
-
+现在打开`components.rs`，并修改`DMSerializationHelper`：
 ```rust
 #[derive(Component, Serialize, Deserialize, Clone)]
 pub struct DMSerializationHelper {
@@ -794,9 +727,7 @@ pub struct DMSerializationHelper {
     pub events : HashMap<String, i32>
 }
 ```
-
-Then in `saveload_system.rs`, we can include the cloned events in our serialization:
-
+然后在`saveload_system.rs`中，我们可以将克隆的事件包含在我们的序列化过程中：
 ```rust
 let savehelper2 = ecs
     .create_entity()
@@ -808,9 +739,7 @@ let savehelper2 = ecs
     .marked::<SimpleMarker<SerializeMe>>()
     .build();
 ```
-
-And import the events when we de-serialize:
-
+当我们反序列化时，导入事件：
 ```rust
 for (e,h) in (&entities, &helper2).join() {
     let mut dungeonmaster = ecs.write_resource::<super::map::MasterDungeonMap>();
@@ -820,10 +749,9 @@ for (e,h) in (&entities, &helper2).join() {
     crate::gamelog::load_events(h.events.clone());
 }
 ```
+## 总结
 
-## Wrap-Up
-
-We now have nicely colored logs, and counters of the player's achievement. This leaves us one step shy of Steam (or XBOX) style achievements - which we will cover in a coming chapter.
+我们现在有了漂亮的彩色日志，以及玩家成就的计数器。这离Steam（或XBOX）风格的成就只差一步——我们将在下一章中介绍。
  
 
 ---

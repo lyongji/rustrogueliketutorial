@@ -12,29 +12,24 @@
 
 ---
 
-The default 8x8 font can get quite hard to read for large blocks of text, especially when combined with post-processing effects. RLTK's graphical console modes (basically everything except `curses`) supports displaying multiple consoles on the same screen, optionally with different fonts. RLTK ships with a VGA font (8x16), which is *much* easier to read. We'll use that, *but only for the log*.
+默认的8x8字体在处理大量文本时可能会变得难以阅读，尤其是在结合后处理效果时。RLTK的图形控制台模式（基本上除了`curses`之外的所有模式）支持在同一屏幕上显示多个控制台，可以选择不同的字体。RLTK附带了一个VGA字体（8x16），这要容易阅读得多。我们将使用它，*但仅用于日志*。
 
-Initialization with a second layer in a VGA font is easy (see RLTK example 2 for details). Expand the builder code in `main.rs`:
-
+使用VGA字体的第二层进行初始化很简单（参见RLTK示例2的详细信息）。扩展`main.rs`中的构建器代码：
 ```rust
 let mut context = RltkBuilder::simple(80, 60)
-    .with_title("Roguelike Tutorial")
+    .with_title("Roguelike 教程")
     .with_font("vga8x16.png", 8, 16)
     .with_sparse_console(80, 30, "vga8x16.png")
     .build()?;
 ```
-
-The main loop's "clear screen" needs to be expanded to clear both layers. In `main.rs` (the `tick` function), we have a bit of code we haven't touched in 70 chapters - clearing the screen at the beginning of a frame. Now we want to clear both consoles:
-
+主循环中的“清除屏幕”需要扩展以清除两层。在`main.rs`（`tick`函数中），我们有一段代码已经70章没有碰过了 - 在帧开始时清除屏幕。现在我们想要清除两个控制台：
 ```rust
 ctx.set_active_console(1);
 ctx.cls();
 ctx.set_active_console(0);
 ctx.cls();
 ```
-
-I ran into some problems with the `TextBlock` component and multiple consoles, so I wrote a replacement. In `src/gamelog/logstore.rs` we remove the `display_log` function and add a replacement:
-
+我在使用`TextBlock`组件和多个控制台时遇到了一些问题，所以写了一个替代方案。在`src/gamelog/logstore.rs`中，我们移除了`display_log`函数并添加了一个替代方案：
 ```rust
 pub fn print_log(console: &mut Box<dyn Console>, pos: Point) {
     let mut y = pos.y;
@@ -50,74 +45,65 @@ pub fn print_log(console: &mut Box<dyn Console>, pos: Point) {
     });
 }
 ```
-
-And correct the exports in `src/gamelog/mod.rs`:
-
+并在`src/gamelog/mod.rs`中更正导出：
 ```rust
 pub use logstore::{clear_log, clone_log, restore_log, print_log};
 ```
-
-Since the new code handles rendering, it's very easy to draw the log file! Change the log render in `gui.rs`:
-
+由于新代码处理渲染，绘制日志文件非常容易！更改`gui.rs`中的日志渲染：
 ```rust
-// Draw the log
+// 绘制日志
 gamelog::print_log(&mut rltk::BACKEND_INTERNAL.lock().consoles[1].console, Point::new(1, 23));
 ```
-
-If you `cargo run` now, you'll see a much easier to read log section:
+如果你现在运行`cargo run`，你会看到一个更容易阅读的日志部分：
 
 ![c72-s1.jpg](c72-s1.jpg)
 
-## Let's Clean Up the GUI Code
+## 让我们清理GUI代码
 
-Since we're working on the GUI, now would be a good time to clean it up. It would be nice to add some mouse support, too. We'll start by turning `gui.rs` into a multi-file module. It's huge, so breaking it up is a win in-and-of itself! Make a new folder, `src/gui` and *move* the `gui.rs` file into it. Then rename that file `mod.rs`. The game will work as before.
+既然我们正在处理GUI，现在是清理它的好时机。添加一些鼠标支持也是不错的。我们将从将`gui.rs`转换为多文件模块开始。它非常大，所以拆分它本身就是一个胜利！创建一个新的文件夹`src/gui`并将`gui.rs`文件*移动*到其中。然后将该文件重命名为`mod.rs`。游戏将像以前一样工作。
 
-Then we do some rearranging:
+然后我们进行一些调整：
 
-* Make a new file, `gui/item_render.rs`. Add `mod item_render; pub use item_render::*;` to `gui/mod.rs`, and move the functions `get_item_color` and `get_item_display_name` into it.
-* RLTK now supports drawing hollow boxes, so we can delete the `draw_hollow_box` function. Replace calls to `draw_hollow_box(ctx, ...)` with `ctx.draw_hollow_box(...)`.
-* Make a new file, `gui/hud.rs`. Add `mod hud; pub use hud::*;` to `gui/mod.rs`. Move the following functions into it: `draw_attribute`, `draw_ui`.
-* Make a new file, `gui/tooltips.rs`. Add `mod tooltips; pub use tooltips::*;` to `gui/mod.rs`. Move the `Tooltip` struct and implementation into it, along with the function `draw_tooltips`. You'll have to make that function `pub`.
-* Make a new file, `gui/inventory_menu.rs`. Add `mod inventory_menu; pub use inventory_menu::*;` to `gui/mod.rs`. Move the inventory menu code into there.
-* It's the same again for item dropping. Make `gui/drop_item_menu.rs`, add `mod drop_item_menu; pub use drop_item_menu::*;` to `mod.rs` and move the item dropping menu.
-* Rinse and repeat for `gui/remove_item_menu.rs` and the move item code.
-* Repeat once again for `gui/remove_curse_menu.rs`.
-* Again - this time `gui/identify_menu.rs`, `gui/ranged_target.rs`, `gui/main_menu.rs`, `gui/game_over_menu.rs`, `gui/cheat_menu.rs` and `gui/vendor_menu.rs`.
+* 创建一个新文件`gui/item_render.rs`。在`gui/mod.rs`中添加`mod item_render; pub use item_render::*;`，并将函数`get_item_color`和`get_item_display_name`移动到其中。
+* RLTK现在支持绘制空心框，所以我们可以删除`draw_hollow_box`函数。将`draw_hollow_box(ctx, ...)`的调用替换为`ctx.draw_hollow_box(...)`。
+* 创建一个新文件`gui/hud.rs`。在`gui/mod.rs`中添加`mod hud; pub use hud::*;`，并将以下函数移动到其中：`draw_attribute`，`draw_ui`。
+* 创建一个新文件`gui/tooltips.rs`。在`gui/mod.rs`中添加`mod tooltips; pub use tooltips::*;`，并将`Tooltip`结构体和实现移动到其中，以及函数`draw_tooltips`。你需要将这个函数设为`pub`。
+* 创建一个新文件`gui/inventory_menu.rs`。在`gui/mod.rs`中添加`mod inventory_menu; pub use inventory_menu::*;`，并将物品菜单代码移动到其中。
+* 对于物品丢弃也是一样的。创建`gui/drop_item_menu.rs`，在`mod.rs`中添加`mod drop_item_menu; pub use drop_item_menu::*;`，并将物品丢弃菜单移动过去。
+* 重复上述步骤，创建`gui/remove_item_menu.rs`和移动物品代码。
+* 再次重复，创建`gui/remove_curse_menu.rs`。
+* 再次 - 这次是`gui/identify_menu.rs`，`gui/ranged_target.rs`，`gui/main_menu.rs`，`gui/game_over_menu.rs`，`gui/cheat_menu.rs`和`gui/vendor_menu.rs`。
 
-There's a lot of import cleanup, also. I recommend referring to the [source code](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-72-textlayers) if you aren't sure what's needed. Once that's all done, the `gui/mod.rs` doesn't contain *any* functionality: just pointers to the individual files.
+还有很多导入清理工作。如果你不确定需要什么，我建议参考[源代码](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-72-textlayers)。一旦完成所有这些，`gui/mod.rs`将不包含任何功能：只是指向各个文件的指针。
 
-The game should run as it did before: but your compile times have improved (especially on incremental builds)!
+游戏应该像以前一样运行：但是你的编译时间有所改善（特别是在增量构建中）！
 
-## While we're cleaning up - the camera
+## 在我们清理的同时 - 相机
 
-It's bugged me for a couple of chapters that `camera.rs` isn't in the `map` module. Let's move it there. Move the file into the `map` folder. Add the line `pub mod camera;` to `map/mod.rs`. This leaves a few references to cleanup:
+有几章我一直觉得`camera.rs`不在`map`模块中是个问题。让我们把它移过去。将文件移动到`map`文件夹中。在`map/mod.rs`中添加一行`pub mod camera;`。这留下了一些需要清理的引用：
 
-* Remove `pub mod camera;` from `main.rs`.
-* Change `use super::` to `use crate::` in `map/camera.rs`.
+* 从`main.rs`中删除`pub mod camera;`。
+* 在`map/camera.rs`中将`use super::`更改为`use crate::`。
 
-## Batched Rendering
+## 批处理渲染
 
-RLTK recently gained a new rendering feature: the ability to render in batches. This makes rendering compatible with systems (you can't add RLTK as a resource, it has too many thread-unsafe features). We're not going to tackle systems in this chapter, but we will switch to the new rendering path. It's a bit faster, and overall cleaner. The good news is that you can large mix and match the two styles while you switch over.
+RLTK最近获得了新的渲染功能：能够批处理渲染。这使得渲染与系统兼容（你不能将RLTK作为资源添加，它有很多线程不安全的功能）。我们不会在本章中处理系统，但我们将切换到新的渲染路径。它稍微快一些，整体上更干净。好消息是你可以大量混合使用这两种风格，在切换过程中。
 
-Start by enabling the system. At the very end of `tick` in `main.rs`, add a single line:
-
+从启用系统开始。在`main.rs`的`tick`末尾添加一行：
 ```rust
 rltk::render_draw_buffer(ctx);
 ```
+这告诉RLTK将任何累积的绘图缓冲区提交到屏幕。通过首先添加这一行，我们确保我们切换的任何内容都将被渲染。
 
-This tells RLTK to submit any draw buffers it has accumulated to the screen. By adding this first, we ensure that anything we switch over will be rendered.
+### 批处理相机
 
-### Batching the camera
-
-Open `map/camera.rs`. Replace the `use rltk::` line with `use rltk::prelude::*;`. Now that RLTK supports a prelude, we should use it! Then, as the first line of `render_camera`, add the following:
-
+打开`map/camera.rs`文件。将`use rltk::`替换为`use rltk::prelude::*;`。现在RLTK支持预导入模块，我们应该使用它！然后，在`render_camera`函数的第一行添加以下内容：
 ```rust
 let mut draw_batch = DrawBatch::new();
 ```
+这将请求RLTK创建一个新的“绘制批次”。这些是高性能的、池化的对象，可以收集绘图指令并一次性提交。这非常有利于缓存，通常可以显著提高性能。
 
-This requests that RLTK create a new "draw batch". These are high-performance, pooled objects that collect drawing instructions and can then be submitted in one go. This is really cache-friendly, and often results in significant improvements in performance.
-
-Replace the first `set` command with `draw_batch.set`:
+将第一个`set`命令替换为`draw_batch.set`：
 
 ```rust
 // FROM
@@ -130,13 +116,11 @@ draw_batch.set(
 );
 ```
 
-You'll want to work through, and make the same change for all of the drawing calls. Add a new line at the very end:
-
+你需要逐步进行，并对所有的绘图调用进行相同的更改。在最后添加一行新的代码：
 ```rust
 draw_batch.submit(0);
 ```
-
-This submits the map render as a batch. The completed function looks like this:
+这将地图渲染作为一个批次提交。完成后的函数如下所示：
 
 ```rust
 pub fn render_camera(ecs: &World, ctx : &mut Rltk) {
@@ -237,11 +221,11 @@ pub fn render_camera(ecs: &World, ctx : &mut Rltk) {
 }
 ```
 
-If you `cargo run` now, it is mostly the same as before: but tool-tips that normally appear on top of the map aren't visible (they are underneath because we submitted at the end).
+如果你现在运行`cargo run`，它大部分与之前相同：但通常出现在地图上方的工具提示是不可见的（它们在下面，因为我们最后提交了）。
 
-## Batching the GUI
+## 批处理GUI
 
-We'll start with `gui/hud.rs` because it's the messiest! Add a `let mut draw_batch = DrawBatch::new();` to the beginning, and a `draw_batch.submit(5000);` to the end. Why `5,000`? There are 80x60 (4,800) possible tiles in the map. The provided number acts as a sort: so we're guaranteeing that we'll draw the GUI after the map. Then it's a matter of converting the `ctx` calls to equivalent batch calls. It's also a good time to break the giant `draw_gui` function into smaller pieces. The completely refactor `gui/hud.rs` looks like this:
+我们将从`gui/hud.rs`开始，因为这是最混乱的部分！在文件开头添加`let mut draw_batch = DrawBatch::new();`，并在结尾添加`draw_batch.submit(5000);`。为什么是5000？地图上有80x60（4800）个可能的瓦片。提供的数字充当排序：所以我们保证在地图之后绘制GUI。然后，将所有的`ctx`调用转换为等效的批处理调用。同时，这也是将庞大的`draw_gui`函数拆分成更小的部分的好时机。完全重构的`gui/hud.rs`看起来像这样：
 
 ```rust
 use rltk::prelude::*;
@@ -524,9 +508,9 @@ pub fn draw_ui(ecs: &World, ctx : &mut Rltk) {
 }
 ```
 
-## Batching the menus
+## 批处理菜单
 
-There's a lot of shared functionality between our various menus that could be combined into helper functions. With batching in mind, we'll first build a new module `gui/menus.rs` to hold the common functionality:
+我们的各种菜单之间有很多共享的功能，可以合并成辅助函数。考虑到批处理，我们首先构建一个新的模块`gui/menus.rs`来持有这些通用功能：
 
 ```rust
 use rltk::prelude::*;
@@ -567,16 +551,14 @@ pub fn menu_option<T:ToString>(draw_batch: &mut DrawBatch, x: i32, y: i32, hotke
 }
 ```
 
-Don't forget to modify `gui/mod.rs` to expose the functionality:
-
+不要忘记修改 `gui/mod.rs` 以暴露这些功能：
 ```rust
 mod menus;
 pub use menus::*;
 ```
+### 作弊菜单
 
-### Cheat Menu
-
-With the new helper, the `gui/cheat_menur.rs` file is an easy refactor:
+有了新的辅助函数，`gui/cheat_menur.rs` 文件的重构变得非常简单：
 
 ```rust
 use rltk::prelude::*;
@@ -623,9 +605,9 @@ pub fn show_cheat_mode(_gs : &mut State, ctx : &mut Rltk) -> CheatMenuResult {
 }
 ```
 
-### Drop Item Menu
+### 丢弃物品菜单
 
-For the various item menus, another helper is useful to reduce duplicated code. In `gui/menus.rs` add the following:
+对于各种物品菜单，另一个辅助函数有助于减少重复的代码。在`gui/menus.rs`中添加以下内容：
 
 ```rust
 pub fn item_result_menu<S: ToString>(
@@ -679,7 +661,7 @@ pub fn item_result_menu<S: ToString>(
 }
 ```
 
-This is basically a generic version of our other menus that return an `ItemMenuResult`. We can use it to significantly simplify `gui/drop_item_menu.rs`:
+这基本上是我们其他返回 `ItemMenuResult` 的菜单的通用版本。我们可以用它来显著简化 `gui/drop_item_menu.rs`：
 
 ```rust
 use rltk::prelude::*;
@@ -713,9 +695,9 @@ pub fn drop_item_menu(gs : &mut State, ctx : &mut Rltk) -> (ItemMenuResult, Opti
 }
 ```
 
-### Remove Item Menu
+### 删除菜单项
 
-The same helper code makes `gui/remove_item_menu.rs` shorter, also:
+这基本上是我们其他返回 `ItemMenuResult` 的菜单的通用版本。我们可以用它来显著简化 `gui/drop_item_menu.rs`：
 
 ```rust
 use rltk::prelude::*;
@@ -749,9 +731,9 @@ pub fn remove_item_menu(gs : &mut State, ctx : &mut Rltk) -> (ItemMenuResult, Op
 }
 ```
 
-### Inventory Menu
+### 库存菜单
 
-Once again, our helper greatly simplifies the inventory menu. We can replace `gui/inventory_menu.rs` with:
+再次，我们的辅助函数极大地简化了库存菜单。我们可以替换`gui/inventory_menu.rs`：
 
 ```rust
 use rltk::prelude::*;
@@ -788,9 +770,9 @@ pub fn show_inventory(gs : &mut State, ctx : &mut Rltk) -> (ItemMenuResult, Opti
 }
 ```
 
-### Identify Menu
+### 识别菜单
 
-The helper is somewhat useful in shortening the `gui/identify_menu.rs` also - but the complex filter is still rather long. Replace the file contents with the following:
+辅助函数在简化 `gui/identify_menu.rs` 文件方面也很有用 - 但复杂的过滤器仍然相当长。用以下内容替换文件内容：
 
 ```rust
 use rltk::prelude::*;
@@ -851,9 +833,9 @@ pub fn identify_menu(gs : &mut State, ctx : &mut Rltk) -> (ItemMenuResult, Optio
 }
 ```
 
-### Remove Curse Menu
+### 解除诅咒菜单
 
-The remove curse menu is very similar to the identification menu, so the same principles apply. Replace `gui/remove_curse_menu.rs` with:
+解除诅咒菜单与识别菜单非常相似，因此可以应用相同的原则。替换`gui/remove_curse_menu.rs`文件内容如下：
 
 ```rust
 use rltk::prelude::*;
@@ -910,9 +892,9 @@ pub fn remove_curse_menu(gs : &mut State, ctx : &mut Rltk) -> (ItemMenuResult, O
 }
 ```
 
-### Game Over Menu
+### 游戏结束菜单
 
-The game over menu is a simple `ctx` to `DrawBatch` port. In `gui/game_over_menu.rs`:
+游戏结束菜单是一个简单的从`ctx`到`DrawBatch`的转换。在`gui/game_over_menu.rs`文件中：
 
 ```rust
 use rltk::prelude::*;
@@ -968,9 +950,9 @@ pub fn game_over(ctx : &mut Rltk) -> GameOverResult {
 }
 ```
 
-### Ranged Targeting Menu
+### 远程目标菜单
 
-`gui/ranged_target.rs` is another simple conversion:
+`gui/ranged_target.rs` 是另一个简单的转换：
 
 ```rust
 use rltk::prelude::*;
@@ -1037,9 +1019,9 @@ pub fn ranged_target(gs : &mut State, ctx : &mut Rltk, range : i32) -> (ItemMenu
 }
 ```
 
-### Main Menu
+### 主菜单
 
-The `gui/main_menu.rs` file is another simple conversion:
+`gui/main_menu.rs` 文件是另一个简单的转换：
 
 ```rust
 use rltk::prelude::*;
@@ -1130,9 +1112,9 @@ pub fn main_menu(gs : &mut State, ctx : &mut Rltk) -> MainMenuResult {
 }
 ```
 
-### Vendor Menus
+### 商家菜单
 
-The vendor menus system takes a little more work, but not much. Our helpers aren't that useful here:
+商家菜单系统需要做一些额外的工作，但不会太多。我们的辅助函数在这里不太有用：
 
 ```rust
 use rltk::prelude::*;
@@ -1255,9 +1237,9 @@ pub fn show_vendor_menu(gs : &mut State, ctx : &mut Rltk, vendor : Entity, mode 
 }
 ```
 
-### Tooltips
+### 工具提示
 
-`gui/tooltip.rs` is relatively easy also:
+`gui/tooltip.rs` 也相对简单：
 
 ```rust
 use rltk::prelude::*;
@@ -1412,9 +1394,9 @@ pub fn draw_tooltips(ecs: &World, ctx : &mut Rltk) {
 }
 ```
 
-## Wrap-Up
+## 总结
 
-This chapter has been a little painful, but we've got our rendering using the new batching system - and nicely rendered larger log text. We'll build on this in future chapters, when we tackle systems (and concurrency).
+这一章节有点痛苦，但我们已经使用新的批处理系统进行了渲染 - 并且完美地渲染了更大的日志文本。在未来的章节中，我们将在此基础上构建，当我们处理系统（和并发）时。
 
 ---
 

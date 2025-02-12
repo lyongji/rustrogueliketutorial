@@ -12,16 +12,15 @@
 
 ---
 
-When you read fiction involving dark elves, they typically sneakily fire missile weapons from the darkness. That's actually why they were included in this tutorial book: they give a great excuse to branch into the wonderful world of ranged combat. We already have a bit of that: spell effects can happen at range, but the targeting system is a little clunky - and not at all ergonomic for an archery duel. So in this chapter, we're going to introduce ranged weaponry and make the dark elves a little scarier. We're also going to try and make the particle effects for missiles better, so the player can see what's going on.
+当你阅读涉及暗夜精灵的科幻小说时，他们通常会偷偷地从黑暗中发射导弹武器。这实际上是本教程书包含暗夜精灵的原因：它们为我们提供了一个很好的机会来深入研究远程战斗的世界。我们已经有了一些远程战斗的元素：法术效果可以在远程发生，但目标选择系统有点笨拙——而且一点也不适合弓箭决斗。所以在本章中，我们将引入远程武器，并使暗夜精灵变得更加可怕。我们还想尝试改进导弹的粒子效果，以便玩家能清楚地看到发生了什么。
 
-## Introducing ranged weapons
+## 介绍远程武器
 
-We're going to cheat a little and not worry about ammunition; some games count every arrow, and for a ranged-combat character there can be a heavy emphasis on keeping one's quiver full. We're going to focus on the ranged weaponry side, and assume that ammunition is plentiful; that's not the most realistic option, but it keeps things manageable!
+我们会稍微作弊，不考虑弹药；有些游戏会计算每一支箭，对于一个远程战斗角色来说，保持箭筒满是非常重要的。我们将专注于远程武器的方面，并假设弹药充足；这不是最现实的选择，但它使事情更易于管理！
 
-### Defining the Shortbow
+### 定义短弓
 
-Let's start by opening up `spawns.json` and making a an entry for a shortbow:
-
+让我们开始打开 `spawns.json` 并为短弓创建一个条目：
 ```json
 {
     "name" : "Shortbow",
@@ -43,9 +42,7 @@ Let's start by opening up `spawns.json` and making a an entry for a shortbow:
     "vendor_category" : "weapon"
 },
 ```
-
-You'll notice that this is very similar to the dagger entry; in fact, I copy/pasted it, and then changed "range" from "melee" to "4"! I also removed the templated magic section for now, to keep things straightforward. Now we open up `components.rs`, and take a look at `MeleeWeapon` - with a view to making a ranged weapon. Unfortunately, we see a design mistake! The damage is all inside the weapon, so if we make a generic `RangedWeapon` component, we'll be repeating ourselves. It's generally a good idea not to type the same thing twice, so we'll change the name of `MeleeWeapon` to `Weapon` - and add in a `range` field. If it doesn't have a range (it's an `Option`), then it's melee-only:
-
+你会注意到这与匕首条目非常相似；实际上，我是复制粘贴的，然后将“range”从“近战”改为“4”！我还暂时移除了模板魔法部分，以保持简单。现在我们打开 `components.rs`，并查看 `MeleeWeapon`——目的是制作远程武器。不幸的是，我们发现了一个设计错误！伤害都在武器内部，所以如果我们制作一个通用的 `RangedWeapon` 组件，我们会重复自己。通常来说，不要重复输入同一件事是一个好主意，所以我们将 `MeleeWeapon` 的名称更改为 `Weapon`——并添加了一个 `range` 字段。如果没有范围（它是一个 `Option`），那么它就是近战武器：
 ```rust
 #[derive(Component, Serialize, Deserialize, Clone)]
 pub struct Weapon {
@@ -59,9 +56,7 @@ pub struct Weapon {
     pub proc_target : Option<String>,
 }
 ```
-
-You'll need to open up `main.rs`, `saveload_system.rs` and change `MeleeWeapon` to `Weapon`. A few other bits of code just broke, too. In `melee_combat_system.rs`, simply replace all instances of `MeleeWeapon` with `Weapon`. You'll also need to add `range` to the dummy weapon created to handle natural attacks:
-
+你需要打开 `main.rs`，`saveload_system.rs` 并将 `MeleeWeapon` 更改为 `Weapon`。还有一些其他代码也出现了问题。在 `melee_combat_system.rs` 中，只需将所有 `MeleeWeapon` 的实例替换为 `Weapon`。你还需要为处理自然攻击的虚拟武器添加 `range`：
 ```rust
 let mut weapon_info = Weapon{
     range: None,
@@ -74,9 +69,7 @@ let mut weapon_info = Weapon{
     proc_target : None
 };
 ```
-
-To make it compile and run as before, you can change one section of `raws/rawmaster.rs`:
-
+为了使其像以前一样编译和运行，你可以更改 `raws/rawmaster.rs` 中的一个部分：
 ```rust
 let mut wpn = Weapon{
     range : None,
@@ -89,11 +82,9 @@ let mut wpn = Weapon{
     proc_target : weapon.proc_target.clone()
 };
 ```
+这样足以使旧代码再次运行，并且有一个重要的优点：我们保持了武器代码的基本相同，因此所有的“特性”和“魔法模板”系统仍然有效。然而，有一个重要的限制：短弓仍然是近战武器！
 
-That's enough to get the old code running once again, and has a significant virtue: we've kept the weapon code basically the same, so all of the "trait" and "magic template" systems still work. There's one significant limitation, though: shortbows are still a melee weapon!
-
-We can open up `raws/rawmaster.rs` and change the same piece of code to instantiate a `range` if there is one. That's a good start - at least the game has the option of knowing that it's a ranged weapon!
-
+我们可以打开 `raws/rawmaster.rs` 并更改相同的代码段以实例化一个 `range`（如果有的话）。这是一个好的开始——至少游戏有选项知道它是一个远程武器！
 ```rust
 let mut wpn = Weapon{
     range : if weapon.range == "melee" { None } else { Some(weapon.range.parse::<i32>().expect("Not a number")) },
@@ -107,10 +98,9 @@ let mut wpn = Weapon{
 };
 ```
 
-## Letting the player shoot things
+## 让玩家射击
 
-So now we know that a weapon *is* a ranged weapon, which is a great start. Let's go into `spawner.rs` and start the player with a short bow. We probably won't keep it, but it gives a good basis on which to build:
-
+现在我们知道武器*是*远程武器，这是一个很好的开始。让我们进入`spawner.rs`，并给玩家一把短弓。我们可能不会一直保留它，但它为我们提供了一个很好的基础来构建：
 ```rust
 spawn_named_entity(&RAWS.lock().unwrap(), ecs, "Rusty Longsword", SpawnType::Equipped{by : player});
 spawn_named_entity(&RAWS.lock().unwrap(), ecs, "Dried Sausage", SpawnType::Carried{by : player} );
@@ -120,13 +110,11 @@ spawn_named_entity(&RAWS.lock().unwrap(), ecs, "Torn Trousers", SpawnType::Equip
 spawn_named_entity(&RAWS.lock().unwrap(), ecs, "Old Boots", SpawnType::Equipped{by : player});
 spawn_named_entity(&RAWS.lock().unwrap(), ecs, "Shortbow", SpawnType::Carried{by : player});
 ```
+我们从背包中开始，所以玩家仍然需要做出有意识的决定来切换到使用远程武器（我们已经做了足够的近战工作，射击不应该成为默认！）- 但这节省了我们不得不在测试系统时四处寻找。继续`cargo run`快速测试你能否装备你的新弓。你还不能射击任何东西，但至少你可以装备它（并确信我们在组件更改中没有破坏太多）。
 
-We've started with it in the backpack, so the player still has to make a conscious decision to switch to using ranged weaponry (we've done enough melee work that shooting things shouldn't be the default!) - but this saves us from having to run around looking for one while we test the system we're building. Go ahead and `cargo run` to quickly test that you can equip your new bow. You can't shoot anything yet, but you can at least equip it (and be confident that we didn't break too much with the component change).
-
-The hardest part of ranged weaponry is that it has a *target*: something you are shooting at. We want target selection to be easy, lest the player not figure out how to shoot things! Let's start by showing the player information about the weapon they have equipped - and if it has a range, we'll include that. In `gui.rs`, find the part where we iterate through equipped items and display them (it's around line 162 in my version). We'll extend it a bit:
-
+远程武器最困难的部分是它有一个*目标*：你射击的东西。我们希望目标选择简单，以免玩家无法弄清楚如何射击！让我们从向玩家显示他们装备的武器信息开始 - 如果它有射程，我们会包括在内。在`gui.rs`中，找到我们遍历装备物品并显示它们的代码部分（在我的版本中大约在第162行）。我们将扩展它一点：
 ```rust
-// Equipped
+// 装备
 let mut y = 13;
 let entities = ecs.entities();
 let equipped = ecs.read_storage::<Equipped>();
@@ -147,7 +135,7 @@ for (entity, equipped_by) in (&entities, &equipped).join() {
             };
 
             if let Some(range) = weapon.range {
-                weapon_info += &format!(" (range: {}, F to fire)", range);
+                weapon_info += &format!(" (射程: {}, F键射击)", range);
             }
             weapon_info += " ├";
             ctx.print_color(3, 45, yellow, black, &weapon_info);
@@ -155,19 +143,16 @@ for (entity, equipped_by) in (&entities, &equipped).join() {
     }
 }
 ```
+这是一个很好的开始，因为我们现在告诉用户他们有一把远程武器（通常显示武器升级的即时结果是个好主意！）：
 
-This is a good start, because now we're telling the user that they have a ranged weapon (and generally showing immediate results of a weapon upgrade is good!):
+![截图](./c70-s1.jpg)
 
-![Screenshot](./c70-s1.jpg)
-
-So, now to let the player easily target enemies! We'll start by making a `Target` component. In `components.rs` (and, as usual, registered in `main.rs` and `saveload_system.rs`):
-
+所以，现在让玩家轻松地瞄准敌人！我们将从创建一个`Target`组件开始。在`components.rs`中（和通常一样，在`main.rs`和`saveload_system.rs`中注册）：
 ```rust
 #[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct Target {}
 ```
-
-The idea is simple: we'll attach a `Target` to whomever we are currently targeting. We should highlight the target on the map; so we go over to `camera.rs` and add the following to the entity render code:
+这个想法很简单：我们将把`Target`附加到我们当前瞄准的任何人。我们应该在地图上突出显示目标；所以我们去`camera.rs`并在实体渲染代码中添加以下内容：
 
 ```rust
 // Render entities
@@ -217,8 +202,7 @@ for (pos, render, entity, _hidden) in data.iter() {
 }
 ```
 
-This code is checking each entity we render to see if it is being targeted, and renders brightly colored brackets around it if it is. We should also provide some hints as to how to use the targeting system, so over in `gui.rs` we amend our ranged weapon code as follows:
-
+这段代码检查我们渲染的每个实体是否被瞄准，如果是，则在其周围渲染明亮的括号。我们还应提供一些关于如何使用瞄准系统的提示，所以在`gui.rs`中，我们按照以下方式修改我们的远程武器代码：
 ```rust
 if let Some(weapon) = weapon.get(entity) {
     let mut weapon_info = if weapon.damage_bonus < 0 {
@@ -230,14 +214,13 @@ if let Some(weapon) = weapon.get(entity) {
     };
 
     if let Some(range) = weapon.range {
-        weapon_info += &format!(" (range: {}, F to fire, V cycle targets)", range);
+        weapon_info += &format!(" (射程: {}, F键射击, V键切换目标)", range);
     }
     weapon_info += " ├";
     ctx.print_color(3, 45, yellow, black, &weapon_info);
 }
 ```
-
-We're telling the user to press `V` to change targets, so we need to implement that functionality! Before we do that, we need to come up with a default targeting scheme. Since we're worrying about the *player's* target, we'll head to `player.rs` and add some new functions. The first determines what entities are eligible for targeting:
+我们告诉用户按`V`键切换目标，所以我们需要实现这个功能！在此之前，我们需要想出一个默认的瞄准方案。由于我们关心的是*玩家的*目标，我们将前往`player.rs`并添加一些新函数。第一个函数确定哪些实体有资格成为目标：
 
 ```rust
 fn get_player_target_list(ecs : &mut World) -> Vec<(f32,Entity)> {
@@ -275,17 +258,16 @@ fn get_player_target_list(ecs : &mut World) -> Vec<(f32,Entity)> {
 }
 ```
 
-This is a slightly convoluted function, so let's step through it:
+这段函数有点复杂，让我们逐步解析：
 
-1. We make an empty results list, containing targetable entities and their distance from the player.
-2. We iterate through equipped weapons, looking to see if the player has a ranged weapon.
-3. If they do, we note down its range.
-4. Then we look at their viewshed, and check that each tile is in range of the weapon.
-5. If it is in range, we look at entities in that tile via the `tile_content` system. If the entity is, in fact, a valid target (they have a `Faction` membership), we add them to the possible targets list.
-6. We sort the possible targets list by range.
+1. 我们创建一个空的结果列表，包含可攻击的实体和它们与玩家的距离。
+2. 我们遍历已装备的武器，查看玩家是否有远程武器。
+3. 如果有，我们记录下其射程。
+4. 然后我们查看玩家的视野，并检查每个瓦片是否在武器的射程内。
+5. 如果在射程内，我们通过`tile_content`系统查看该瓦片中的实体。如果实体确实是有效的目标（它们有`Faction`成员资格），我们将它们添加到可能的目标列表中。
+6. 我们按距离对可能的目标列表进行排序。
 
-Now we need to select a new target when the player moves. We'll pick the closest, on the basis that you are more likely to target an immediate threat. The following function accomplishes this:
-
+现在我们需要在玩家移动时选择一个新的目标。我们将选择最近的，因为更有可能直接攻击即时威胁。以下函数实现了这一点：
 ```rust
 pub fn end_turn_targeting(ecs: &mut World) {
     let possible_targets = get_player_target_list(ecs);
@@ -293,13 +275,11 @@ pub fn end_turn_targeting(ecs: &mut World) {
     targets.clear();
 
     if !possible_targets.is_empty() {
-        targets.insert(possible_targets[0].1, Target{}).expect("Insert fail");
+        targets.insert(possible_targets[0].1, Target{}).expect("插入失败");
     }
 }
 ```
-
-We want the *start* of a new turn to call this function. So we head over into `main.rs`, and amend the game loop to catch the start of new turns and call this function:
-
+我们希望在新回合的开始调用这个函数。因此我们进入`main.rs`，并修改游戏循环以捕获新回合的开始并调用这个函数：
 ```rust
 RunState::Ticking => {
     let mut should_change_target = false;
@@ -324,9 +304,7 @@ RunState::Ticking => {
     }
 }
 ```
-
-Now we'll return to `player.rs` and add another function to cycle targets:
-
+现在我们回到`player.rs`并添加另一个函数来循环目标：
 ```rust
 fn cycle_target(ecs: &mut World) {
     let possible_targets = get_player_target_list(ecs);
@@ -358,32 +336,28 @@ fn cycle_target(ecs: &mut World) {
 }
 ```
 
-This is a long function, but I left it long for clarity. It finds the index of the current target in the current targeting list. If there are multiple targets, it selects the next one in the list. If it was at the end of the list, it moves back to the beginning. Now we need to capture presses of `V` and call this function. In the `player_input` function, we'll add a new section:
-
+这段函数虽然很长，但我故意保持它的长度以便于理解。它找到当前目标在当前目标列表中的索引。如果有多个目标，它会选择列表中的下一个目标。如果它已经到达列表的末尾，它会回到开头。现在我们需要捕获按下“V”键并调用这个函数。在`player_input`函数中，我们将添加一个新的部分：
 ```rust
-// Ranged
+// 远程
 VirtualKeyCode::V => {
     cycle_target(&mut gs.ecs);
     return RunState::AwaitingInput;
 }
 ```
+如果你现在运行`cargo run`，你可以装备你的弓并开始选择目标：
 
-If you `cargo run` now, you can equip your bow and start targeting:
+![截图](./c70-s2.jpg)
 
-![Screenshot](./c70-s2.jpg)
+### 射击物体
 
-### Shooting Things
-
-We have a well-established pattern for combat: flag the action with a `WantsToMelee` component, and then it is picked up in the `MeleeCombatSystem`. We've used a similar pattern for wanting to approach, use skills or items - so it just makes sense that we'll do the same again for wanting to shoot. In `components.rs` (and registered in `main.rs` and `saveload_system.rs`), we'll add the following:
-
+我们已经建立了一个用于战斗的模式：用`WantsToMelee`组件标记动作，然后在`MeleeCombatSystem`中处理。我们已经使用类似的方法来处理想要接近、使用技能或物品的情况——所以对于想要射击的情况，我们也这样做是有道理的。在`components.rs`中（并在`main.rs`和`saveload_system.rs`中注册），我们将添加以下内容：
 ```rust
 #[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct WantsToShoot {
     pub target : Entity
 }
 ```
-
-We'll also want to make a new system, and store it in `ranged_combat_system.rs`. It's basically a cut-and-paste of the `melee_combat_system`, but looking for `WantsToShoot` instead:
+我们还想要制作一个新的系统，并将其存储在`ranged_combat_system.rs`中。它基本上是`melee_combat_system`的复制粘贴，但寻找的是`WantsToShoot`：
 
 ```rust
 use specs::prelude::*;
@@ -420,14 +394,14 @@ impl<'a> System<'a> for RangedCombatSystem {
             positions, map) = data;
 
         for (entity, wants_shoot, name, attacker_attributes, attacker_skills, attacker_pools) in (&entities, &wants_shoot, &names, &attributes, &skills, &pools).join() {
-            // Are the attacker and defender alive? Only attack if they are
+            // 攻击者和防御者都活着吗？只有在这种情况下才进行攻击
             let target_pools = pools.get(wants_shoot.target).unwrap();
             let target_attributes = attributes.get(wants_shoot.target).unwrap();
             let target_skills = skills.get(wants_shoot.target).unwrap();
             if attacker_pools.hit_points.current > 0 && target_pools.hit_points.current > 0 {
                 let target_name = names.get(wants_shoot.target).unwrap();
 
-                // Fire projectile effect
+                // 发射效果
                 let apos = positions.get(entity).unwrap();
                 let dpos = positions.get(wants_shoot.target).unwrap();
                 add_effect(
@@ -447,7 +421,7 @@ impl<'a> System<'a> for RangedCombatSystem {
                     Targets::Tile{tile_idx : map.xy_idx(apos.x, apos.y) as i32}
                 );
 
-                // Define the basic unarmed attack - overridden by wielding check below if a weapon is equipped
+                // 定义基本的 unarmed 攻击 - 如果装备了武器，会被下面的 wielding 检查覆盖
                 let mut weapon_info = Weapon{
                     range: None,
                     attribute : WeaponAttribute::Might,
@@ -484,7 +458,7 @@ impl<'a> System<'a> for RangedCombatSystem {
                 let skill_hit_bonus = skill_bonus(Skill::Melee, &*attacker_skills);
                 let weapon_hit_bonus = weapon_info.hit_bonus;
                 let mut status_hit_bonus = 0;
-                if let Some(hc) = hunger_clock.get(entity) { // Well-Fed grants +1
+                if let Some(hc) = hunger_clock.get(entity) { // Well-Fed 提供 +1 命中加值
                     if hc.state == HungerState::WellFed {
                         status_hit_bonus += 1;
                     }
@@ -512,7 +486,7 @@ impl<'a> System<'a> for RangedCombatSystem {
 
                 //println!("Armor class: {}", armor_class);
                 if natural_roll != 1 && (natural_roll == 20 || modified_hit_roll > armor_class) {
-                    // Target hit! Until we support weapons, we're going with 1d4
+                    // 命中目标！目前我们只支持 1d4 伤害
                     let base_damage = rng.roll_dice(weapon_info.damage_n_dice, weapon_info.damage_die_type);
                     let attr_damage_bonus = attacker_attributes.might.bonus;
                     let skill_damage_bonus = skill_bonus(Skill::Melee, &*attacker_skills);
@@ -532,7 +506,7 @@ impl<'a> System<'a> for RangedCombatSystem {
                     );
                     log.entries.push(format!("{} hits {}, for {} hp.", &name.name, &target_name.name, damage));
 
-                    // Proc effects
+                    // Proc 效果
                     if let Some(chance) = &weapon_info.proc_chance {
                         let roll = rng.roll_dice(1, 100);
                         //println!("Roll {}, Chance {}", roll, chance);
@@ -552,7 +526,7 @@ impl<'a> System<'a> for RangedCombatSystem {
                     }
 
                 } else  if natural_roll == 1 {
-                    // Natural 1 miss
+                    // 自然 1 未命中
                     log.entries.push(format!("{} considers attacking {}, but misjudges the timing.", name.name, target_name.name));
                     add_effect(
                         None,
@@ -560,7 +534,7 @@ impl<'a> System<'a> for RangedCombatSystem {
                         Targets::Single{ target: wants_shoot.target }
                     );
                 } else {
-                    // Miss
+                    // 未命中
                     log.entries.push(format!("{} attacks {}, but can't connect.", name.name, target_name.name));
                     add_effect(
                         None,
@@ -576,17 +550,14 @@ impl<'a> System<'a> for RangedCombatSystem {
 }
 ```
 
-Most of this is straight out of the previous system. You'll also want to add in into `run_systems` in `main.rs`; right after melee is a good spot:
-
+大部分内容都直接来自之前的系统。你还需要将其添加到`main.rs`的`run_systems`中；在近战之后是一个好地方：
 ```rust
 let mut ranged = RangedCombatSystem{};
 ranged.run_now(&self.ecs);
 ```
+眼尖的读者可能已经注意到我们还悄悄地加入了一个额外的`add_effect`调用，这次调用了`EffectType::ParticleProjectile`。这不是必需的，但在远程战斗中显示飞行的投射物确实能增强游戏的氛围。到目前为止，我们的粒子一直是静止的，所以让我们为它们添加一些“活力”！
 
-The eagle-eyed reader will have noticed that we also snuck in an extra `add_effect` call, this time invoking an `EffectType::ParticleProjectile`. This isn't essential, but displaying a flying projectile really brings out the flavor in a ranged battle. So far, our particles have been stationary, so lets add in some "juice" to them!
-
-In `components.rs`, we'll update the `ParticleLifetime` component to include an optional animation:
-
+在`components.rs`中，我们将更新`ParticleLifetime`组件以包含一个可选的动画：
 ```rust
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ParticleAnimation {
@@ -603,21 +574,20 @@ pub struct ParticleLifetime {
 }
 ```
 
-This adds a `step_time` - how long should the particle dwell on each step. A `path` - a vector of `Point`s listing each step along the way. `current_step` and `timer` will be used to track the projectile's progress.
+这增加了`step_time` - 粒子应在每个步骤上停留多长时间。一个`path` - 一个`Point`的向量，列出了沿路的每个步骤。`current_step`和`timer`将用于跟踪投射物的进度。
 
-You'll want to go into `particle_system.rs` and modify the particle spawning to include `None` by default:
+你需要进入`particle_system.rs`并修改粒子生成，以默认包含`None`：
 
 ```rust
 particles.insert(p, ParticleLifetime{ lifetime_ms: new_particle.lifetime, animation: None }).expect("Unable to insert lifetime");
 ```
 
-While we're here, we'll rename the culling function (`cull_dead_particles`) to `update_particles` - better reflecting what it does. We'll also add in some logic to see if there is animation, and have it update its position along the animation track:
-
+我们在这里，将剔除函数（`cull_dead_particles`）重命名为`update_particles` - 更好地反映了它的功能。我们还将添加一些逻辑来检查是否有动画，并使其沿着动画轨道更新其位置：
 ```rust
 pub fn update_particles(ecs : &mut World, ctx : &Rltk) {
     let mut dead_particles : Vec<Entity> = Vec::new();
     {
-        // Age out particles
+        // Aging out particles
         let mut particles = ecs.write_storage::<ParticleLifetime>();
         let entities = ecs.entities();
         let map = ecs.fetch::<Map>();
@@ -646,9 +616,9 @@ pub fn update_particles(ecs : &mut World, ctx : &Rltk) {
 }
 ```
 
-Open up `main.rs` again, and search for `cull_dead_particles` and replace it with `update_particles`.
+再次打开`main.rs`，搜索`cull_dead_particles`并将其替换为`update_particles`。
 
-That's enough to actually animate the particles and still have them vanish when done, but we need to update the `Effects` system to spawn the new type of particle. In `effects/mod.rs`, we'll extend the `EffectType` enum to include the new one:
+这样足以实际动画化粒子并在完成后使它们消失，但我们需要更新`Effects`系统以生成新类型的粒子。在`effects/mod.rs`中，我们将扩展`EffectType`枚举以包含新的类型：
 
 ```rust
 #[derive(Debug)]
@@ -658,7 +628,7 @@ pub enum EffectType {
     ...
 ```
 
-We also have to update `affect_tile` in the same file:
+我们还必须更新同一文件中的`affect_tile`：
 
 ```rust
 fn affect_tile(ecs: &mut World, effect: &mut EffectSpawner, tile_idx : i32) {
@@ -676,7 +646,7 @@ fn affect_tile(ecs: &mut World, effect: &mut EffectSpawner, tile_idx : i32) {
 }
 ```
 
-This calls into `particles::projectile`, so open up `effects/particles.rs` and we'll add the function:
+这将调用`particles::projectile`，所以打开`effects/particles.rs`并添加函数：
 
 ```rust
 pub fn projectile(ecs: &mut World, tile_idx : i32, effect: &EffectSpawner) {
@@ -704,13 +674,13 @@ pub fn projectile(ecs: &mut World, tile_idx : i32, effect: &EffectSpawner) {
 }
 ```
 
-If you `cargo run` the project now, you can target and shoot things - and enjoy a bit of animation:
+如果你现在运行`cargo run`项目，你可以选择目标并射击 - 享受一点动画效果：
 
-![Screenshot](./c70-pewpew.gif)
+![截图](./c70-pewpew.gif)
 
-## Making Monsters Shoot Back
+## 让怪物进行反击
 
-Only the player having a bow is more than a little unfair. It also takes a lot of challenge out of the game: you can shoot things as they approach you, but they can't fire back. Let's add a new monster, the *Bandit Archer*. It's mostly a copy of the *Bandit*, but they have a short bow instead of a dagger. In `spawns.json`:
+只有玩家拥有弓是非常不公平的。这也使游戏失去了很多挑战性：你可以射击接近你的东西，但他们不能反击。让我们添加一个新的怪物，*Bandit Archer*。它主要是*Bandit*的副本，但它们有短弓而不是匕首。在`spawns.json`中：
 
 ```json
 { "name" : "Bandit Archer", "weight" : 9, "min_depth" : 2, "max_depth" : 3 },
@@ -726,7 +696,7 @@ Only the player having a bow is more than a little unfair. It also takes a lot o
     "blocks_tile" : true,
     "vision_range" : 6,
     "movement" : "random_waypoint",
-    "quips" : [ "Stand and deliver!", "Alright, hand it over" ],
+    "quips" : [ "站住，交出财物!", "好吧，把它交出来" ],
     "attributes" : {},
     "equipped" : [ "Shortbow", "Shield", "Leather Armor", "Leather Boots" ],
     "light" : {
@@ -738,7 +708,7 @@ Only the player having a bow is more than a little unfair. It also takes a lot o
 },
 ```
 
-We've changed their color slightly, and added a `Shortbow` to their equipment list. We already support equipment spawning, so that should be enough for the bow to appear in their equipment - but they don't know how to use it. We already handle spellcasting (and things like dragon breath) in `ai/visible_ai_systems.rs` - so that's a logical place to consider adding shooting. We can add it quite simply: check to see if there is a ranged weapon equipped, and if there is - check range and generate a `WantsToShoot`. We'll modify the reaction `Attack`:
+我们稍微改变了它们的颜色，并给它们的装备列表中添加了`Shortbow`。我们已经支持装备生成，所以这应该足以让弓出现在它们的装备中 - 但它们不知道如何使用它。我们已经在`ai/visible_ai_systems.rs`中处理了施法（以及类似龙息的东西） - 所以这是考虑添加射击的合理位置。我们可以简单地添加：检查是否有装备远程武器，如果有 - 检查范围并生成`WantsToShoot`。我们将修改反应`Attack`：
 
 ```rust
 Reaction::Attack => {
@@ -767,10 +737,10 @@ Reaction::Attack => {
         for (weapon, equip) in (&weapons, &equipped).join() {
             if let Some(wrange) = weapon.range {
                 if equip.owner == entity {
-                    rltk::console::log(format!("Owner found. Ranges: {}/{}", wrange, range));
+                    rltk::console::log(format!("找到所有者。范围：{}/{}", wrange, range));
                     if wrange >= range as i32 {
-                        rltk::console::log("Inserting shoot");
-                        wants_shoot.insert(entity, WantsToShoot{ target: reaction.2 }).expect("Insert fail");
+                        rltk::console::log("插入射击");
+                        wants_shoot.insert(entity, WantsToShoot{ target: reaction.2 }).expect("插入失败");
                         done = true;
                     }
                 }
@@ -780,17 +750,16 @@ Reaction::Attack => {
     ...
 ```
 
-If you `cargo run` now, the bandits shoot back!
+如果你现在运行`cargo run`，土匪会进行反击！
 
-## Templating magical bows
+## 制作魔法弓
 
-Add the shortbow to your spawn list:
+将短弓添加到你的生成列表中：
 
 ```json
 { "name" : "Shortbow", "weight" : 2, "min_depth" : 3, "max_depth" : 100 },
 ```
-
-You can also add magical templating to it:
+你也可以为它添加魔法模板：
 
 ```json
 {
@@ -820,9 +789,9 @@ You can also add magical templating to it:
 },
 ```
 
-## Making Dark Elves Scarier
+## 使暗夜精灵更加可怕
 
-So now we can introduce some goblin archers, to make the caves a little scarier. We won't introduce any ranged weapons in the dragon/lizard levels, to even the odds a little (the game just got easier!). We can cut-and-paste a goblin just like we did for the bandit:
+现在我们可以引入一些哥布林弓箭手，使洞穴变得更加可怕。我们不会在龙/蜥蜴等级中引入任何远程武器，以保持游戏平衡（游戏变得更简单了！）。我们可以像对土匪那样复制粘贴一个哥布林：
 
 ```json
 {
@@ -843,7 +812,7 @@ So now we can introduce some goblin archers, to make the caves a little scarier.
 },
 ```
 
-And that brings us to our goal when we started the chapter. We wanted to give Dark Elves hand-crossbows. We'll start by generating the new weapon type in `spawns.json`:
+这就达到了我们本章开始时的目标。我们想要给暗夜精灵手弩。我们首先在`spawns.json`中生成新的武器类型：
 
 ```json
 {
@@ -873,13 +842,13 @@ And that brings us to our goal when we started the chapter. We wanted to give Da
 },
 ```
 
-We should also add it to the spawns table, but only for dark elf levels:
+我们还应该将其添加到生成表中，但仅限于暗夜精灵等级：
 
 ```json
 { "name" : "Hand Crossbow", "weight" : 2, "min_depth" : 9, "max_depth" : 11 }
 ```
 
-Finally, we give it to the dark elves:
+最后，我们将其交给暗夜精灵：
 
 ```json
 {
@@ -901,7 +870,7 @@ Finally, we give it to the dark elves:
 },
 ```
 
-And that's it! When you reach the Dark Elves guarding the entrance to their city - they can now shoot you. We'll flesh out the city in the next chapter.
+就这样！当你到达守卫暗夜精灵城市入口的暗夜精灵时——他们现在可以射击你。我们将在下一章中详细介绍暗夜精灵的城市。
 
 ...
 
