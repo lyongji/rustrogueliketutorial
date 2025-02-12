@@ -1,24 +1,24 @@
-# Chapter 3 - Walking a Map
+# 第三章 - 地图漫步
 
 ---
 
-***About this tutorial***
+***关于本教程***
 
-*This tutorial is free and open source, and all code uses the MIT license - so you are free to do with it as you like. My hope is that you will enjoy the tutorial, and make great games!*
+*本教程是免费和开源的，所有代码均使用MIT许可证 - 因此您可以自由地使用它。我希望您会喜欢这个教程，并制作出伟大的游戏！*
 
-*If you enjoy this and would like me to keep writing, please consider supporting [my Patreon](https://www.patreon.com/blackfuture).*
+*如果您喜欢这个教程并希望我继续写作，请考虑支持[我的Patreon](https://www.patreon.com/blackfuture)。*
 
-[![Hands-On Rust](./beta-webBanner.jpg)](https://pragprog.com/titles/hwrust/hands-on-rust/)
+[![实践Rust](./beta-webBanner.jpg)](https://pragprog.com/titles/hwrust/hands-on-rust/)
 
 ---
 
-The remainder of this tutorial will be dedicated to making a Roguelike. [Rogue](https://en.wikipedia.org/wiki/Rogue_(video_game) appeared in 1980, as a text-mode dungeon exploration game. It has spawned an entire genre of "roguelikes": procedurally generated maps, hunting an objective over multiple levels and "permadeath" (restart when you die). The definition is the source of many online fights; I'd rather avoid that!
+本教程的其余部分将致力于制作一个Roguelike游戏。[Rogue](https://en.wikipedia.org/wiki/Rogue_(video_game))出现在1980年，作为一个文本模式的地下城探险游戏。它催生了一个整个“Roguelike”游戏类型：程序化生成的地图，跨越多个级别的目标狩猎和“永久死亡”（死亡时重新开始）。定义的来源是许多在线争论的原因；我更愿意避免这种争论！
 
-A Roguelike without a map to explore is a bit pointless, so in this chapter we'll put together a basic map, draw it, and let your player walk around a bit. We're starting with the code from chapter 2, but with the red smiley faces (and their leftward tendencies) removed.
+没有地图可以探索的Roguelike游戏是有点无意义的，所以在本章中我们将组装一个基本的地图，绘制它，并让玩家在地图上走动。我们从第二章的代码开始，但删除了红色的笑脸（以及它们的向左倾向）。
 
-## Defining the map tiles
+## 定义地图瓦片
 
-We'll start by allowing two tile types: walls and floors. We can represent this with an `enum` (to learn more about enumerations, [The Rust Book](https://doc.rust-lang.org/book/ch06-00-enums.html) has a *large* section on them):
+我们首先允许两种瓦片类型：墙壁和地板。我们可以使用`enum`（要了解更多关于枚举的信息，[The Rust Book](https://doc.rust-lang.org/book/ch06-00-enums.html)有一个*很大的*关于它们的章节）来表示：
 
 ```rust
 #[derive(PartialEq, Copy, Clone)]
@@ -27,13 +27,13 @@ enum TileType {
 }
 ```
 
-Notice that we've included some derived features (more usage of derive macros, this time built into Rust itself): `Copy` and `Clone`. `Clone` adds a `.clone()` method to the type, allowing a copy to be made programmatically. `Copy` changes the default from *moving* the object on assignment to making a copy - so `tile1 = tile2` leaves both values valid and not in a "moved from" state.
+注意，我们包含了一些派生特性（这次是Rust内置的派生宏）：`Copy` 和 `Clone`。`Clone` 为类型添加了一个 `.clone()` 方法，允许以编程方式复制对象。`Copy` 改变了赋值时的默认行为，从 *移动* 对象到制作一个副本 - 所以 `tile1 = tile2` 会留下两个有效的值，而不是处于“已移动”状态。
 
-`PartialEq` allows us to use `==` to see if two tile types match. If we *didn't* derive these features, `if tile_type == TileType::Wall` would fail to compile!
+`PartialEq` 允许我们使用 `==` 来判断两个瓦片类型是否匹配。如果我们 *不* 派生这些特性，`if tile_type == TileType::Wall` 将无法编译！
 
-## Building a simple map
+## 构建一个简单的地图
 
-Now we'll make a function that returns a `vec` (vector) of tiles, representing a simple map. We'll use a vector sized to the whole map, which means we need a way to figure out which array index is at a given x/y position. So first, we make a new function `xy_idx`:
+现在我们将制作一个返回 `vec`（向量）的函数，代表一个简单的地图。我们将使用一个与整个地图大小相同的向量，这意味着我们需要一种方法来找出给定x/y位置对应的数组索引。所以首先，我们定义一个新的函数 `xy_idx`：
 
 ```rust
 pub fn xy_idx(x: i32, y: i32) -> usize {
@@ -41,16 +41,16 @@ pub fn xy_idx(x: i32, y: i32) -> usize {
 }
 ```
 
-This is simple: it multiplies the `y` position by the map width (80), and adds `x`. This guarantees one tile per location, and efficiently maps it in memory for left-to-right reading.
+这很简单：它将 `y` 位置乘以地图宽度（80），然后加上 `x`。这保证了每个位置都有一个瓦片，并且有效地将它在内存中映射出来，以便从左到右阅读。
 
-We're using a Rust function shorthand here. Notice that the function returns a `usize` (equivalent to `size_t` in C/C++ - whatever the basic size type used for a platform is) - and the function body lacks a `;` at the end? Any function that ends with a statement that lacks a semicolon treats that line as a `return` statement. So it's the same as typing `return (y as usize * 80) + x as usize`. This comes from the Rust author's *other* favorite language, `ML` - which uses the same shorthand. It's considered "Rustacean" (canonical Rust; I always picture a Rust Monster with cute little claws and shell) to use this style, so we've adopted it for the tutorial.
+我们在这里使用了Rust函数的简写形式。注意到函数返回一个 `usize`（相当于C/C++中的 `size_t` - 无论平台使用的基本大小类型是什么）- 并且函数体末尾没有 `;`？任何以没有分号的语句结尾的函数都会将该行视为 `return` 语句。所以这与键入 `return (y as usize * 80) + x as usize` 是一样的。这来自Rust作者的其他最爱语言，`ML` - 它也使用相同的简写。这种风格被认为是“Rustacean”（规范的Rust；我总是想象一个有着可爱小爪子和壳的Rust怪物）所以我们在教程中采用了它。
 
-Then we write a *constructor* function to make a map:
+然后我们编写一个*构造函数*来制作地图：
 ```rust
 fn new_map() -> Vec<TileType> {
     let mut map = vec![TileType::Floor; 80*50];
 
-    // Make the boundaries walls
+    // 设置边界为墙壁
     for x in 0..80 {
         map[xy_idx(x, 0)] = TileType::Wall;
         map[xy_idx(x, 49)] = TileType::Wall;
@@ -60,8 +60,8 @@ fn new_map() -> Vec<TileType> {
         map[xy_idx(79, y)] = TileType::Wall;
     }
 
-    // Now we'll randomly splat a bunch of walls. It won't be pretty, but it's a decent illustration.
-    // First, obtain the thread-local RNG:
+    // 现在我们将随机生成一些墙壁。这可能不太美观，但作为一个示例还是不错的。
+    // 首先，获取线程本地的随机数生成器：
     let mut rng = rltk::RandomNumberGenerator::new();
 
     for _i in 0..400 {
@@ -77,42 +77,40 @@ fn new_map() -> Vec<TileType> {
 }
 ```
 
-There's a fair amount of syntax that we haven't encountered before here, so lets break this down:
+这里有一些我们之前没有遇到过的语法，让我们来逐步解析：
 
-1. `fn new_map() -> Vec<TileType>` species a function named `new_map`. It doesn't take any parameters, so it can be called from anywhere.
-2. It *returns* a `Vec`. `Vec` is a Rust *Vector* (if you're familiar with C++, it's pretty much exactly the same as a C++ `std::vector`). A vector is like an *array* (see [this Rust by Example chapter](https://doc.rust-lang.org/rust-by-example/primitives/array.html)), which lets you put a bunch of data into a list and access each element. Unlike an *array*, a `Vec` doesn't have a size limit - and the size can change while the program runs. So you can `push` (add) new items, and `remove` them as you go. [Rust by Example has a great chapter on Vectors](https://doc.rust-lang.org/rust-by-example/std/vec.html); it's a good idea to learn about them - they are used *everywhere*.
-3. `let mut map = vec![TileType::Floor; 80*50];` is a confusing looking statement! Lets break it down:
-    1. `let mut map` is saying "make a new variable" (`let`), "let me change it" (`mut`) and call it "map".
-    2. `vec!` is a *macro*, another one build into the Rust standard library. The exclamation mark is Rust's way of saying "this is a procedural macro" (as opposed to a derive macro, like we've seen before). Procedural macros run like a function - they define a *procedure*, they just greatly reduce your typing.
-    3. The `vec!` macro takes its parameters in square brackets.
-    4. The first parameter is the *value* for each element of the new vector. In this case, we're setting every entry we create to be a `Floor` (from the `TileType` enumeration).
-    5. The second parameter is how many tiles we should create. They will all be set to the value we set above. In this case, our map is 80x50 tiles (4,000 tiles - but we'll let the compiler do the math for us!). So we need to make 4,000 tiles.
-    6. You could have replaced the `vec!` call with `for _i in 0..4000 { map.push(TileType::Floor); }`. In fact, that's pretty much what the macro did for you - but it's definitely less typing to have the macro do it for you!
-4. `for x in 0..80 {` is a `for loop` ([see here](https://doc.rust-lang.org/rust-by-example/flow_control/for.html)), just like we used in the previous example. In this case, we're iterating `x` from 0 to 79.
-5. `map[xy_idx(x, 0)] = TileType::Wall;` first calls the `xy_idx` function we defined above to get the vector index for `x, 0`. It then *indexes* the vector, telling it to set the vector entry at that position to be a wall. We do this again for `x,49`.
-6. We do the same thing, but looping `y` from 0..49 - and setting the vertical walls on our map.
-7. `let mut rng = rltk::RandomNumberGenerator::new();` calls the `RandomNumberGenerator` type in `RLTK`'s `new` function, and assigns it to a variable called `rng`. We are asking RLTK to give us a new dice roller.
-8. `for _i in 0..400 {` is the same as other `for` loops, but notice the `_` before `i`. We aren't actually looking at the value of `i` - we just want the loop to run 400 times. Rust will give you a warning if you have a variable you don't use; adding the underscore prefix tells Rust that it's ok, we meant to do that.
-9. `let x = rng.roll_dice(1, 79);` calls the `rng` we grabbed in 7, and asks it for a random number from 1 to 79. RLTK does *not* go with an exclusive range, because it is trying to mirror the old D&D convention of dice being `1d20` or similar. In this case, we should be glad that computers don't care about the geometric difficulty of inventing a 79-sided dice! We also obtain a `y` value between 1 and 49. We've rolled imaginary dice, and found a random location on the map.
-10. We set the variable `idx` (short for "index") to the vector index (via `xy_idx` we defined earlier) for the coordinates we rolled.
-11. `if idx != xy_idx(40, 25) {` checks that `idx` isn't the exact middle (we'll be starting there, so we don't want to start inside a wall!).
-12. If it isn't the middle, we set the randomly rolled location to be a wall.
+1. `fn new_map() -> Vec<TileType>` 定义了一个名为 `new_map` 的函数。它不接受任何参数，因此可以从任何地方调用。
+2. 它 *返回* 一个 `Vec`。`Vec` 是Rust的 *向量*（如果你熟悉C++，它基本上与C++的 `std::vector` 相同）。向量类似于 *数组*（参见 [Rust by Example的这一章节](https://doc.rust-lang.org/rust-by-example/primitives/array.html)），它允许你将一堆数据放入列表中并访问每个元素。与 *数组* 不同的是，`Vec` 没有大小限制 - 并且在程序运行时大小可以改变。因此，你可以 `push`（添加）新项目，并在需要时 `remove` 它们。 [Rust by Example 有一个关于向量的很好的章节](https://doc.rust-lang.org/rust-by-example/std/vec.html)；学习它们是一个好主意 - 它们被 *到处* 使用。
+3. `let mut map = vec![TileType::Floor; 80*50];` 是一个看起来令人困惑的语句！让我们来逐步解析：
+    1. `let mut map` 表示“创建一个新变量”（`let`），“让我改变它”（`mut`）并命名为“map”。
+    2. `vec!` 是 *宏*，是Rust标准库中的另一个宏。感叹号是Rust表示“这是一个过程宏”（与之前看到的派生宏相对）的方式。过程宏像函数一样运行 - 它们定义了一个 *过程*，它们只是大大减少了你的输入量。
+    3. `vec!` 宏在方括号中接受其参数。
+    4. 第一个参数是新向量的每个元素的 *值*。在这种情况下，我们将创建的每个条目设置为 `Floor`（来自 `TileType` 枚举）。
+    5. 第二个参数是我们应该创建的瓦片数量。它们都将被设置为我们上面设置的值。在这种情况下，我们的地图是80x50个瓦片（4000个瓦片 - 但我们让编译器为我们计算！）。因此，我们需要创建4000个瓦片。
+    6. 你可以用 `for _i in 0..4000 { map.push(TileType::Floor); }` 替换 `vec!` 调用。事实上，宏为你做的就是这件事 - 但使用宏 definitely 更少输入量！
+4. `for x in 0..80 {` 是一个 `for` 循环（[参见这里](https://doc.rust-lang.org/rust-by-example/flow_control/for.html)），就像我们在之前的例子中使用的那样。在这种情况下，我们正在迭代 `x` 从0到79。
+5. `map[xy_idx(x, 0)] = TileType::Wall;` 首先调用我们上面定义的 `xy_idx` 函数来获取 `x, 0` 的向量索引。然后 *索引* 向量，告诉它将向量中该位置的条目设置为墙壁。我们再次为 `x,49` 做同样的操作。
+6. 我们做同样的操作，但是循环 `y` 从0到49 - 并在我们的地图上设置垂直墙壁。
+7. `let mut rng = rltk::RandomNumberGenerator::new();` 调用 `RLTK` 的 `new` 函数中的 `RandomNumberGenerator` 类型，并将其赋值给名为 `rng` 的变量。我们要求RLTK给我们一个新的骰子 roller。
+8. `for _i in 0..400 {` 与其他 `for` 循环相同，但注意 `i` 前面的 `_`。我们实际上并没有查看 `i` 的值 - 我们只是希望循环运行400次。如果你有一个未使用的变量，Rust会给你一个警告；在变量前添加下划线前缀告诉Rust，这是可以的，我们故意这样做。
+9. `let x = rng.roll_dice(1, 79);` 调用我们在7中获取的 `rng`，并要求它给出1到79之间的随机数。RLTK不采用排他范围，因为它试图模仿旧的D&D规则中的骰子是 `1d20` 或类似。在这种情况下，我们应该感到高兴，因为计算机不关心发明一个79面的骰子的几何难度！我们还获得了1到49之间的 `y` 值。我们已经掷了想象中的骰子，并在地图上找到了一个随机位置。
+10. 我们将变量 `idx`（简称“索引”）设置为我们在上面掷骰子得到的坐标的向量索引。
+11. `if idx != xy_idx(40, 25) {` 检查 `idx` 是否不是正中间（我们将从这里开始，所以不想在墙里面开始！）。
+12. 如果不是中间，我们将随机掷骰子的位置设置为墙壁。
 
-It's pretty simple: it places walls around the outer edges of the map, and then adds 400 random walls anywhere that isn't the player's starting point.
+这很简单：它在地图的外围放置了墙壁，然后在除了玩家起始点之外的任何地方随机添加了400个墙壁。
 
-## Making the map visible to the world
+## 将地图展示给世界
 
-Specs includes a concept of "resources" - shared data the whole ECS can use. So in our `main` function, we add a randomly generated map to the world:
-
+Specs包含了一个“资源”的概念 - ECS可以使用的共享数据。因此，在我们的`main`函数中，我们将一个随机生成的地图添加到游戏世界中：
 ```rust
 gs.ecs.insert(new_map());
 ```
+现在地图可以在ECS可以访问的任何地方使用！现在在您的代码中，您可以使用相当繁琐的`let map = self.ecs.get_mut::<Vec<TileType>>();`来访问地图；以更简单的方式在系统中可用。实际上，有*几种*方法可以获取地图的值，包括`ecs.get`，`ecs.fetch`。`get_mut`获取一个“可变的”（您可以更改它）对地图的引用 - 包装在可选的（以防地图不存在）。`fetch`跳过了`Option`类型，直接给您一个地图。您可以在[Specs Book](https://specs.amethyst.rs/docs/tutorials/04_resources.html)中了解更多关于这个的信息。
 
-The map is now available from anywhere the ECS can see! Now inside your code, you can access the map with the rather unwieldy `let map = self.ecs.get_mut::<Vec<TileType>>();`; it's available to systems in an easier fashion. There's actually *several* ways to get the value of map, including `ecs.get`, `ecs.fetch`. `get_mut` obtains a "mutable" (you can change it) reference to the map - wrapped in an optional (in case the map isn't there). `fetch` skips the `Option` type and gives you a map directly. You can learn more about this [in the Specs Book](https://specs.amethyst.rs/docs/tutorials/04_resources.html).
+## 绘制地图
 
-## Draw the map
-
-Now that we have a map available, we should put it on the screen! The complete code for the new `draw_map` function looks like this:
+现在我们有了一个可用的地图，我们应该将它显示在屏幕上！新`draw_map`函数的完整代码如下：
 
 ```rust
 fn draw_map(map: &[TileType], ctx : &mut Rltk) {
@@ -139,25 +137,22 @@ fn draw_map(map: &[TileType], ctx : &mut Rltk) {
 }
 ```
 
-This is mostly straightforward, and uses concepts we've already visited. In the declaration, we pass the map as `&[TileType]` rather than `&Vec<TileType>`; this allows us to pass in "slices" (parts of) a map if we so choose. We won't do that yet, but it may be useful later. It's also considered a more "rustic" (that is: idiomatic Rust) way to do things, and the linter (`clippy`) warns about it. [The Rust Book can teach you about slices, if you are interested](https://doc.rust-lang.org/rust-by-example/primitives/array.html).
+这部分代码主要是直接的，并使用了我们已经介绍过的概念。在声明中，我们将地图作为 `&[TileType]` 而不是 `&Vec<TileType>` 传递；这允许我们传递地图的“切片”（部分）。我们暂时不会这样做，但这可能在以后有用。这也是一种更为“正宗的”（即：符合Rust习惯的）做法，并且lint工具（`clippy`）会对此发出警告。[如果你对切片感兴趣，Rust Book可以教你相关知识](https://doc.rust-lang.org/rust-by-example/primitives/array.html)。
 
-Otherwise, it takes advantage of the way we are storing our map - rows together, one after the other. So it iterates through the entire map structure, adding 1 to the `x` position for each tile. If it hits the map width, it zeroes `x` and adds one to `y`. This way we aren't repeatedly reading all over the array - which can get slow. The actual rendering is very simple: we `match` the tile type, and draw either a period or a hash for walls/floors.
+否则，它利用了我们存储地图的方式——行与行相邻，一个接一个。因此，它遍历整个地图结构，为每个瓦片增加1到 `x` 位置。如果到达地图宽度，它将 `x` 清零并增加1到 `y`。这样我们就不会反复读取整个数组——这可能会变慢。实际的渲染非常简单：我们根据瓦片类型进行 `match`，并为墙壁/地板绘制一个句点或井号。
 
-We should also call the function! In our `tick` function, add:
-
+我们还应该调用该函数！在我们的 `tick` 函数中，添加：
 ```rust
 let map = self.ecs.fetch::<Vec<TileType>>();
 draw_map(&map, ctx);
 ```
+`fetch` 调用是新的（我们上面提到了它）。`fetch` 要求你承诺你知道你请求的资源确实存在——如果不存在，它将会崩溃。它并不完全返回一个引用——它是一个 `shred` 类型，大多数时候表现得像一个引用，但偶尔需要一点强制转换才能成为引用。我们将在需要跨越这座桥时担心这个问题，但现在请提前警告！
 
-The `fetch` call is new (we mentioned it above). `fetch` requires that you promise that you know that the resource you are requesting really does exist - and will crash if it doesn't. It doesn't *quite* return a reference - it's a `shred` type, which *acts* like a reference most of the time but occasionally needs a bit of coercing to *be* one. We'll worry about that bridge when it comes time to cross it, but consider yourself warned!
+## 使墙壁变得坚实
 
-## Making walls solid
+所以现在如果你运行程序（`cargo run`），你将会有一个绿色和灰色的地图，上面有一个黄色的 `@` 可以四处走动。不幸的是，你很快就会发现玩家可以穿过墙壁！幸运的是，这很容易纠正。
 
-So now if you run the program (`cargo run`), you'll have a green and grey map with a yellow `@` who can move around. Unfortunately, you'll quickly notice that the player can walk through walls! Fortunately, that's pretty easy to rectify.
-
-To accomplish this, we modify the `try_move_player` to read the map and check that the destination is open:
-
+为了实现这一点，我们修改 `try_move_player` 以读取地图并检查目的地是否开放：
 ```rust
 fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
@@ -173,14 +168,13 @@ fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     }
 }
 ```
+新的部分是 `let map = ...` 部分，它使用 `fetch` 与主循环中相同的方式（这是将其存储在ECS中的优势——你可以在不试图强制Rust使用全局变量的情况下在到处访问它！）。我们使用 `let destination_idx = xy_idx(pos.x + delta_x, pos.y + delta_y);` 计算玩家目的地的单元格索引——如果不是墙壁，我们就正常移动。
 
-The new parts are the `let map = ...` part, which uses `fetch` just the same way as the main loop (this is the advantage of storing it in the ECS - you can get to it everywhere without trying to coerce Rust into letting you use global variables!). We calculate the cell index of the player's destination with `let destination_idx = xy_idx(pos.x + delta_x, pos.y + delta_y);` - and if it isn't a wall, we move as normal.
+现在运行程序（`cargo run`），你将在地图中拥有一个玩家——并且可以移动，被墙壁正确阻挡。
 
-Run the program (`cargo run`) now, and you have a player in a map - and can move around, properly obstructed by walls.
+![截图](./c3-s1.gif)
 
-![Screenshot](./c3-s1.gif)
-
-The full program now looks like this:
+完整的程序现在如下所示：
 
 ```rust
 use rltk::{GameState, Rltk, RGB, VirtualKeyCode};
@@ -190,12 +184,14 @@ use specs_derive::*;
 
 
 
+// 定义一个组件，表示位置
 #[derive(Component)]
 struct Position {
     x: i32,
     y: i32,
 }
 
+// 定义一个组件，表示可渲染的对象
 #[derive(Component)]
 struct Renderable {
     glyph: rltk::FontCharType,
@@ -203,26 +199,31 @@ struct Renderable {
     bg: RGB,
 }
  
+// 定义一个组件，表示玩家
 #[derive(Component, Debug)]
 struct Player {}
 
+// 定义一个枚举，表示地图上的瓦片类型
 #[derive(PartialEq, Copy, Clone)]
 enum TileType {
     Wall, Floor
 }
 
+// 定义游戏状态
 struct State {
     ecs: World
 }
 
+// 将二维坐标转换为线性索引
 pub fn xy_idx(x: i32, y: i32) -> usize {
     (y as usize * 80) + x as usize
 }
 
+// 生成新的地图
 fn new_map() -> Vec<TileType> {
     let mut map = vec![TileType::Floor; 80*50];
 
-    // Make the boundaries walls
+    // 设置地图边界为墙壁
     for x in 0..80 {
         map[xy_idx(x, 0)] = TileType::Wall;
         map[xy_idx(x, 49)] = TileType::Wall;
@@ -232,8 +233,8 @@ fn new_map() -> Vec<TileType> {
         map[xy_idx(79, y)] = TileType::Wall;
     }
 
-    // Now we'll randomly splat a bunch of walls. It won't be pretty, but it's a decent illustration.
-    // First, obtain the thread-local RNG:
+    // 现在我们将随机生成一些墙壁。这可能不太美观，但作为一个示例还是不错的。
+    // 首先，获取线程本地的随机数生成器：
     let mut rng = rltk::RandomNumberGenerator::new();
 
     for _i in 0..400 {
@@ -249,6 +250,7 @@ fn new_map() -> Vec<TileType> {
 }
 
 fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
+    // 尝试移动玩家
     let mut positions = ecs.write_storage::<Position>();
     let mut players = ecs.write_storage::<Player>();
     let map = ecs.fetch::<Vec<TileType>>();
@@ -263,9 +265,9 @@ fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
 }
 
 fn player_input(gs: &mut State, ctx: &mut Rltk) {
-    // Player movement
+    // 处理玩家输入
     match ctx.key {
-        None => {} // Nothing happened
+        None => {} // 没有发生任何事情
         Some(key) => match key {
             VirtualKeyCode::Left => try_move_player(-1, 0, &mut gs.ecs),
             VirtualKeyCode::Right => try_move_player(1, 0, &mut gs.ecs),
@@ -277,10 +279,11 @@ fn player_input(gs: &mut State, ctx: &mut Rltk) {
 }
 
 fn draw_map(map: &[TileType], ctx : &mut Rltk) {
+    // 绘制地图
     let mut y = 0;
     let mut x = 0;
     for tile in map.iter() {
-        // Render a tile depending upon the tile type
+        // 根据瓦片类型渲染瓦片
         match tile {
             TileType::Floor => {
                 ctx.set(x, y, RGB::from_f32(0.5, 0.5, 0.5), RGB::from_f32(0., 0., 0.), rltk::to_cp437('.'));
@@ -290,7 +293,7 @@ fn draw_map(map: &[TileType], ctx : &mut Rltk) {
             }
         }
 
-        // Move the coordinates
+        // 移动坐标
         x += 1;
         if x > 79 {
             x = 0;
@@ -299,66 +302,87 @@ fn draw_map(map: &[TileType], ctx : &mut Rltk) {
     }
 }
 
+// 定义一个名为 State 的结构体，实现 GameState trait
 impl GameState for State {
+    // 定义 tick 方法，用于处理每一帧的逻辑
     fn tick(&mut self, ctx : &mut Rltk) {
+        // 清除屏幕
         ctx.cls();
 
+        // 处理玩家输入
         player_input(self, ctx);
+        // 运行游戏系统
         self.run_systems();
 
+        // 从 ECS 中获取地图数据
         let map = self.ecs.fetch::<Vec<TileType>>();
+        // 绘制地图
         draw_map(&map, ctx);
 
+        // 从 ECS 中读取 Position 和 Renderable 组件
         let positions = self.ecs.read_storage::<Position>();
         let renderables = self.ecs.read_storage::<Renderable>();
 
+        // 遍历所有具有 Position 和 Renderable 组件的实体
         for (pos, render) in (&positions, &renderables).join() {
+            // 在屏幕上绘制实体
             ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
         }
     }
 }
 
+// 为 State 结构体实现 run_systems 方法
 impl State {
+    // 运行游戏系统
     fn run_systems(&mut self) {
+        // 维护 ECS 世界
         self.ecs.maintain();
     }
 }
 
+// 主函数
 fn main() -> rltk::BError {
+    // 使用 RltkBuilder 创建一个简单的 80x50 的窗口
     use rltk::RltkBuilder;
     let context = RltkBuilder::simple80x50()
         .with_title("Roguelike Tutorial")
         .build()?;
+    // 创建游戏状态
     let mut gs = State {
         ecs: World::new()
     };
+    // 在 ECS 中注册 Position、Renderable 和 Player 组件
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
 
+    // 在 ECS 中插入新的地图
     gs.ecs.insert(new_map());
 
+    // 在 ECS 中创建一个玩家实体
     gs.ecs
         .create_entity()
-        .with(Position { x: 40, y: 25 })
-        .with(Renderable {
+        .with(Position { x: 40, y: 25 }) // 设置玩家位置
+        .with(Renderable { // 设置玩家渲染信息
             glyph: rltk::to_cp437('@'),
             fg: RGB::named(rltk::YELLOW),
             bg: RGB::named(rltk::BLACK),
         })
-        .with(Player{})
+        .with(Player{}) // 标记为玩家实体
         .build();
 
+    // 进入游戏主循环
     rltk::main_loop(context, gs)
 }
 ```
 
-**The source code for this chapter may be found [here](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-03-walkmap)**
+**本章的源代码可以在[这里](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-03-walkmap)找到**
 
-[Run this chapter's example with web assembly, in your browser (WebGL2 required)](https://bfnightly.bracketproductions.com/rustbook/wasm/chapter-03-walkmap/)
+[在浏览器中用Web汇编运行本章的示例（需要WebGL2）](https://bfnightly.bracketproductions.com/rustbook/wasm/chapter-03-walkmap/)
+
+---
+
+版权所有 (C) 2019, Herbert Wolverson。
 
 ---
 
-Copyright (C) 2019, Herbert Wolverson.
-
----
