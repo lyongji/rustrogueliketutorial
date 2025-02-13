@@ -1,4 +1,4 @@
-# Chapter 4 - A More Interesting Map
+# 第4章 - 一个更有趣的地图
 
 ---
 
@@ -12,35 +12,34 @@
 
 ---
 
-In this chapter, we'll make a more interesting map. It will be room-based, and look a bit like many of the earlier roguelikes such as Moria - but with less complexity. It will also provide a great starting point for placing monsters!
+在这一章中，我们将创建一个更有趣的地图。它将基于房间，并且看起来有点像许多早期的 rogue-like 游戏，如 Moria - 但复杂性较低。它还将为放置怪物提供一个很好的起点！
 
-## Cleaning up
+## 清理代码
 
-We're going to start by cleaning up our code a bit, and utilizing separate files. As projects gain in complexity/size, it's a good idea to start keeping them as a clean set of files/modules, so we can quickly find what we're looking for (and improve compilation times, sometimes).
+我们将首先稍微清理一下代码，并使用单独的文件。随着项目的复杂性和大小的增加，将它们作为一组干净的文件/模块来保存是一个好主意，这样我们可以快速找到我们需要的东西（有时还可以提高编译时间）。
 
-If you look at the [source code for this chapter](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-04-newmap), you'll see that we've broken out a lot of functionality into individual files. When you make a new file in Rust, it automatically becomes a *module*. You then have to tell Rust to use these modules, so `main.rs` has gained a few `mod map` and similar, followed by `pub use map::*`. This says "import the module map, and then use - and make available to other modules - its public contents".
+如果你查看[本章的源代码](https://github.com/thebracket/rustrogueliketutorial/tree/master/chapter-04-newmap)，你会发现我们将很多功能分解成了单独的文件。当你在 Rust 中创建一个新文件时，它自动成为一个 *模块*。然后你必须告诉 Rust 使用这些模块，所以 `main.rs` 增加了一些 `mod map` 和类似的语句，后面跟着 `pub use map::*`。这意味着“导入 map 模块，然后使用 - 并使其他模块可以访问 - 它的公共内容”。
 
-We've also made a bunch of `struct` into `pub struct`, and added `pub` to their members. If you *don't* do this, then the structure remains internal to that module only - and you can't use it in other parts of the code. This is the same as putting a `public:` C++ line in a class definition, and exporting the type in the header. Rust makes it a bit cleaner, and no need to write things twice!
+我们还把很多 `struct` 变成了 `pub struct`，并为它们的成员添加了 `pub`。如果你 *不* 这样做，那么结构将仅限于该模块内部 - 你不能在代码的其他部分使用它。这相当于在 C++ 类定义中放置一个 `public:` 行，并在头文件中导出类型。Rust 使其更加干净，不需要写两次！
 
-## Making a more interesting map
+## 创建更有趣的地图
 
-We'll start by renaming `new_map` (now in `map.rs`) to `new_map_test`. We'll stop using it, but keep it around for a bit - it's a decent way to test our map code! We'll also use Rust's documentation tags to publish what this function does, in case we forget later:
+我们将首先将 `new_map`（现在在 `map.rs` 中）重命名为 `new_map_test`。我们将停止使用它，但保留一段时间 - 这是测试我们地图代码的一个不错的方式！我们还将使用 Rust 的文档标签来发布这个函数的作用，以防我们忘记：
 
 ```rust
-/// Makes a map with solid boundaries and 400 randomly placed walls. No guarantees that it won't
-/// look awful.
+/// 创建一个有 solid 边界和 400 个随机放置的墙的地图。不能保证它不会看起来很糟糕。
 pub fn new_map_test() -> Vec<TileType> {
     ...
 }
 ```
 
-In canonical Rust, if you prefix a function with comments starting with `///`, it makes it into a *function comment*. Your IDE will then show you your comment text when you hover the mouse over the function header, and you can use [Cargo's documentation features](https://doc.rust-lang.org/cargo/commands/cargo-doc.html) to make pretty documentation pages for the system you are writing. It's mostly handy if you plan on sharing your code, or working with others - but it's nice to have!
+在规范的 Rust 中，如果你用 `///` 开头的注释前缀一个函数，它就会变成一个 *函数注释*。当你在函数头上悬停鼠标时，你的 IDE 将会显示你的注释文本，你可以使用 [Cargo 的文档功能](https://doc.rust-lang.org/cargo/commands/cargo-doc.html) 为你编写的系统制作漂亮的文档页面。如果你打算分享你的代码或与他人合作，这会很有用 - 但它也很好！
 
-So now, in the spirit of the [original libtcod tutorial](http://rogueliketutorials.com/tutorials/tcod/part-3/), we'll start making a map. Our goal is to randomly place rooms, and join them together with corridors.
+所以现在，在遵循[原始 libtcod 教程](http://rogueliketutorials.com/tutorials/tcod/part-3/)的精神下，我们将开始制作地图。我们的目标是随机放置房间，并用走廊将它们连接起来。
 
-## Making a couple of rectangular rooms
+## 创建几个矩形房间
 
-We'll start with a new function:
+我们将从一个新函数开始：
 
 ```rust
 pub fn new_map_rooms_and_corridors() -> Vec<TileType> {
@@ -50,9 +49,9 @@ pub fn new_map_rooms_and_corridors() -> Vec<TileType> {
 }
 ```
 
-This makes a solid 80x50 map, with walls on all tiles - you can't move! We've kept the function signature, so changing the map we want to use in `main.rs` just requires changing `gs.ecs.insert(new_map_test());` to `gs.ecs.insert(new_map_rooms_and_corridors());`. Once again we're using the `vec!` macro to make our life easier - see the previous chapter for a discussion of how that works.
+这将创建一个 solid 80x50 的地图，所有瓦片都是墙壁 - 你不能移动！我们保留了函数签名，所以要在 `main.rs` 中更改我们想要使用的地图，只需将 `gs.ecs.insert(new_map_test());` 更改为 `gs.ecs.insert(new_map_rooms_and_corridors());`。我们再次使用 `vec!` 宏来简化我们的工作 - 有关其工作原理的讨论，请参见上一章。
 
-Since this algorithm makes heavy use of rectangles, and a `Rect` type - we'll start by making one in `rect.rs`. We'll include some utility functions that will be useful later on in this chapter:
+由于此算法大量使用矩形和 `Rect` 类型 - 我们将首先在 `rect.rs` 中创建一个。我们还将包括一些在本章后面有用的实用函数：
 
 ```rust
 pub struct Rect {
@@ -67,7 +66,7 @@ impl Rect {
         Rect{x1:x, y1:y, x2:x+w, y2:y+h}
     }
 
-    // Returns true if this overlaps with other
+    // 如果与此矩形重叠，则返回 true
     pub fn intersect(&self, other:&Rect) -> bool {
         self.x1 <= other.x2 && self.x2 >= other.x1 && self.y1 <= other.y2 && self.y2 >= other.y1
     }
@@ -78,14 +77,14 @@ impl Rect {
 }
 ```
 
-There's nothing really new here, but lets break it down a bit:
+这里并没有什么真正的新内容，但让我们稍微分析一下：
 
-1. We define a `struct` called `Rect`. We added the `pub` tag to make it *public* - it's available outside of this module (by putting it into a new file, we automatically created a code module; that's a built-in Rust way to compartmentalize your code). Over in `main.rs`, we can add `pub mod Rect` to say "we use `Rect`, and because we put a `pub` in front of it anything can get `Rect` from us as `super::rect::Rect`. That's not very ergonomic to type, so a second line `use rect::Rect` shortens that to `super::Rect`.
-2. We make a new *constructor*, entitled `new`. It uses the return shorthand and returns a rectangle based on the `x`, `y`, `width` and `height` we pass in.
-3. We define a *member* method, `intersect`. It has an `&self`, meaning it can see into the `Rect` to which it is attached - but can't modify it (it's a "pure" function). It returns a bool: `true` if the two rectangles overlap, `false` otherwise.
-4. We define `center`, also as a pure member method. It simply returns the coordinates of the middle of the rectangle, as a *tuple* of `x` and `y` in `val.0` and `val.1`. 
+1. 我们定义了一个名为 `Rect` 的 `struct`。我们添加了 `pub` 标签使其 *公开* - 它可以在模块外部使用（通过将其放入一个新文件，我们自动创建了一个代码模块；这是 Rust 内置的一种将代码分块的方式）。在 `main.rs` 中，我们可以添加 `pub mod Rect` 来表示“我们使用 `Rect`，并且由于我们在前面加了 `pub`，任何东西都可以从我们这里以 `super::rect::Rect` 的形式获取 `Rect`”。这不是很方便输入，所以第二行 `use rect::Rect` 将其缩短为 `super::Rect`。
+2. 我们制作了一个新的 *构造函数*，名为 `new`。它使用返回简写并返回一个基于我们传入的 `x`、`y`、`width` 和 `height` 的矩形。
+3. 我们定义了一个 *成员* 方法，`intersect`。它有一个 `&self`，意味着它可以查看它附加的 `Rect` - 但不能修改它（它是一个“纯”函数）。它返回一个布尔值：如果两个矩形重叠，则为 `true`，否则为 `false`。
+4. 我们定义了 `center`，也是一个纯成员方法。它简单地返回矩形的中心坐标，作为一个 `x` 和 `y` 的 *元组*，分别在 `val.0` 和 `val.1` 中。
 
-We'll also make a new function to apply a room to a map:
+我们还将制作一个新的函数来将房间应用到地图上：
 
 ```rust
 fn apply_room_to_map(room : &Rect, map: &mut [TileType]) {
@@ -97,9 +96,9 @@ fn apply_room_to_map(room : &Rect, map: &mut [TileType]) {
 }
 ```
 
-Notice that we are using `for y in room.y1 +1 ..= room.y2` - that's an *inclusive range*. We want to go all the way to the value of `y2`, and not `y2-1`! Otherwise, it's relatively straightforward: use two for loops to visit every tile inside the room's rectangle, and set that tile to be a `Floor`.
+注意我们使用的是 `for y in room.y1 +1 ..= room.y2` - 这是一个 *包含范围*。我们想要一直到达 `y2` 的值，而不是 `y2-1`！否则，它相对直接：使用两个 for 循环来访问房间矩形内的每个瓦片，并将该瓦片设置为 `Floor`。
 
-With these two bits of code, we can create a new rectangle anywhere with `Rect::new(x, y, width, height)`. We can add it to the map as floors with `apply_room_to_map(rect, map)`. That's enough to add a couple of test rooms. Our map function now looks like this:
+有了这两段代码，我们可以使用 `Rect::new(x, y, width, height)` 在任何地方创建一个新的矩形。我们可以使用 `apply_room_to_map(rect, map)` 将其作为地板添加到地图上。这足以添加两个测试房间。我们的地图函数现在看起来像这样：
 
 ```rust
 pub fn new_map_rooms_and_corridors() -> Vec<TileType> {
@@ -115,13 +114,13 @@ pub fn new_map_rooms_and_corridors() -> Vec<TileType> {
 }
 ```
 
-If you `cargo run` your project, you'll see that we now have two rooms - not linked together.
+如果您 `cargo run` 您的项目，您会看到我们现在有两个房间 - 但它们没有连接在一起。
 
-## Making a corridor
+## 创建走廊
 
-Two disconnected rooms isn't much fun, so lets add a corridor between them. We're going to need some comparison functions, so we have to tell Rust to import them (at the top of `map.rs`): `use std::cmp::{max, min};`. `min` and `max` do what they say: they return the minimum or maximum of two values. You could use `if` statements to do the same thing, but some computers will optimize this into a simple (FAST) call for you; we let Rust figure that out! 
+两个未连接的房间并不好玩，所以让我们在它们之间添加一条走廊。我们需要一些比较函数，因此我们必须告诉Rust导入它们（在`map.rs`的顶部）：`use std::cmp::{max, min};`。`min`和`max`的作用如其名：它们返回两个值中的最小值或最大值。你可以使用`if`语句来做同样的事情，但一些计算机可能会将其优化为一个简单的（快速）调用；我们让Rust来决定！ 
 
-Then we make two functions, for horizontal and vertical tunnels:
+然后我们创建两个函数，一个用于水平隧道，一个用于垂直隧道：
 
 ```rust
 fn apply_horizontal_tunnel(map: &mut [TileType], x1:i32, x2:i32, y:i32) {
@@ -143,11 +142,11 @@ fn apply_vertical_tunnel(map: &mut [TileType], y1:i32, y2:i32, x:i32) {
 }
 ```
 
-Then we add a call, `apply_horizontal_tunnel(&mut map, 25, 40, 23);` to our map making function, and voila! We have a tunnel between the two rooms! If you run (`cargo run`) the project, you can walk between the two rooms - and not into walls. So our previous code is still working, but now it looks a bit more like a roguelike.
+然后我们在地图制作函数中添加一个调用，`apply_horizontal_tunnel(&mut map, 25, 40, 23);`，于是我们就在两个房间之间有了一个隧道！如果你运行（`cargo run`）项目，你可以在两个房间之间行走 - 而不是走进墙壁。所以我们的旧代码仍然有效，但现在它看起来更像一个rogue-like游戏。
 
-## Making a simple dungeon
+## 创建一个简单的地牢
 
-Now we can use that to make a random dungeon. We'll modify our function as follows:
+现在我们可以使用它来创建一个随机地牢。我们将修改我们的函数如下：
 
 ```rust
 pub fn new_map_rooms_and_corridors() -> Vec<TileType> {
@@ -180,21 +179,21 @@ pub fn new_map_rooms_and_corridors() -> Vec<TileType> {
 }
 ```
 
-There's quite a bit changed there:
+有很多变化：
 
-* We've added `const` constants for the maximum number of rooms to make, and the minimum and maximum size of the rooms. This is the first time we've encountered `const`: it just says "setup this value at the beginning, and it can never change". It's the only easy way to have global variables in Rust; since they can never change, they often don't even exist and get baked into the functions where you use them. If they *do* exist, because they can't change there are no concerns when multiple threads access them. It's often cleaner to setup a named constant than to use a "magic number" - that is, a hard-coded value with no real clue as to why you picked that value.
-* We acquire a `RandomNumberGenerator` from RLTK (which required that we add to the `use` statement at the top of `map.rs`)
-* We're randomly building a width and height.
-* We're then placing the room randomly so that `x` and `y` are greater than 0 and less than the maximum map size minus one.
-* We iterate through existing rooms, rejecting the new room if it overlaps with one we've already placed.
-* If its ok, we apply it to the room.
-* We're keeping rooms in a vector, although we aren't using it yet.
+* 我们为要创建的最大房间数以及房间的最小和最大尺寸添加了`const`常量。这是我们第一次遇到`const`：它只是说“在开始时设置这个值，并且它永远不会改变”。这是在Rust中拥有全局变量的唯一简单方法；由于它们永远不会改变，它们通常甚至不存在，并且被烘焙到你使用的函数中。如果它们*确实*存在，因为它们不能改变，所以在多线程访问它们时没有问题。设置命名常量通常比使用“魔法数字”更干净 - 那是一个没有真正线索的硬编码值，你为什么选择那个值。
+* 我们从RLTK获取了一个`RandomNumberGenerator`（这需要我们在`map.rs`顶部的`use`语句中添加）
+* 我们正在随机构建宽度和高度。
+* 然后我们随机放置房间，使`x`和`y`大于0且小于最大地图尺寸减一。
+* 我们遍历现有的房间，如果新房间与我们已经放置的房间重叠，则拒绝新房间。
+* 如果可以，我们将其应用到房间中。
+* 我们正在保持房间在一个向量中，尽管我们还没有使用它。
 
-Running the project (`cargo run`) at this point will give you a selection of random rooms, with no corridors between them.
+在这一点上运行项目（`cargo run`）将给你一系列随机房间，它们之间没有走廊。
 
-## Joining the rooms together
+## 连接房间
 
-We now need to join the rooms together, with corridors. We'll add this to the `if ok` section of the map generator:
+现在我们需要通过走廊连接房间。我们将在地图生成器的 `if ok` 部分添加代码：
 
 ```rust
 if ok {
@@ -216,24 +215,24 @@ if ok {
 }
 ```
 
-1. So what does this do? It starts by looking to see if the `rooms` list is empty. If it is, then there is no previous room to join to - so we ignore it.
-2. It gets the room's center, and stores it as `new_x` and `new_y`.
-3. It gets the previous room in the vector's center, and stores it as `prev_x` and `prev_y`.
-4. It rolls a dice, and half the time it draws a horizontal and then vertical tunnel - and half the time, the other way around.
+1. 这段代码首先检查 `rooms` 列表是否为空。如果是，则没有之前的房间可以连接 - 因此我们忽略它。
+2. 它获取房间的中心，并将其存储为 `new_x` 和 `new_y`。
+3. 它获取向量中前一个房间的中心，并将其存储为 `prev_x` 和 `prev_y`。
+4. 它掷骰子，一半时间绘制水平然后垂直隧道 - 另一半时间则相反。
 
-Try `cargo run` now. It's really starting to look like a roguelike!
+现在尝试 `cargo run`。它看起来真的像一个Roguelike游戏！
 
-## Placing the player
+## 放置玩家
 
-Currently, the player always starts in the center of the map - which with the new generator, may not be a valid starting point! We *could* simply move the player to the center of the first room, but it's likely that our generator will need to know where all the rooms are - so we can put things in them - rather than just the player's location. So we'll modify our `new_map_rooms_and_corridors` function to also return the room list. So we change the method signature to: `pub fn new_map_rooms_and_corridors() -> (Vec<Rect>, Vec<TileType>) {`, and the return statement to `(rooms, map)`
+目前，玩家总是从地图中心开始 - 使用新的生成器，这可能不是一个有效的起点！我们可以简单地将玩家移动到第一个房间的中心，但很可能我们的生成器需要知道所有房间的位置 - 这样我们可以在其中放置物品 - 而不仅仅是玩家的位置。因此，我们将修改 `new_map_rooms_and_corridors` 函数以同时返回房间列表。因此，我们将方法签名更改为：`pub fn new_map_rooms_and_corridors() -> (Vec<Rect>, Vec<TileType>) {`，并将返回语句更改为 `(rooms, map)`。
 
-Our `main.rs` file also requires adjustments, to accept the new format. We change our `main` function in `main.rs` to:
+我们的 `main.rs` 文件也需要进行调整，以接受新的格式。我们在 `main.rs` 中将 `main` 函数更改为：
 
 ```rust
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
     let context = RltkBuilder::simple80x50()
-        .with_title("Roguelike Tutorial")
+        .with_title("Roguelike 教程")
         .build()?;
     let mut gs = State {
         ecs: World::new()
@@ -251,7 +250,7 @@ fn main() -> rltk::BError {
         .with(Position { x: player_x, y: player_y })
         .with(Renderable {
             glyph: rltk::to_cp437('@'),
-            fg: RGB::named(rltk::YELLOW),
+            fg:::named(rltk::YELLOW),
             bg: RGB::named(rltk::BLACK),
         })
         .with(Player{})
@@ -261,19 +260,19 @@ fn main() -> rltk::BError {
 }
 ```
 
-This is mostly the same, but we are receiving *both* the rooms list and the map from `new_map_rooms_and_corridors`. We then place the player in the center of the first room.
+这大部分是相同的，但我们从 `new_map_rooms_and_corridors` 接收了 *房间列表* 和地图。然后我们将玩家放置在第一个房间的中心。
 
-## Wrapping Up - and supporting the numpad, and Vi keys
+## 总结 - 支持数字键盘和 Vi 键
 
-Now you have a map that looks like a roguelike, places the player in the first room, and lets you explore with the cursor keys. Not every keyboard *has* cursor keys that are readily accessible (some laptops require interesting key combinations for them). Lots of players like to steer with the numpad, but not every keyboard has one of those either - so we also support the directional keys from the text editor `vi`. This makes both hardcore UNIX users happy, and makes regular players happier.
+现在你有了一个看起来像Roguelike游戏的地图，将玩家放置在第一个房间，并允许你使用光标键进行探索。不是每台键盘都有容易访问的光标键（一些笔记本电脑需要有趣的键组合才能使用它们）。许多玩家喜欢使用数字键盘进行操作，但不是每台键盘都有。因此，我们还支持文本编辑器 `vi` 的方向键。这使硬核 UNIX 用户和普通玩家都感到满意。
 
-We're not going to worry about diagonal movement yet. In `player.rs`, we change `player_input` to look like this:
+我们暂时不考虑对角移动。在 `player.rs` 中，我们将 `player_input` 更改为如下所示：
 
 ```rust
 pub fn player_input(gs: &mut State, ctx: &mut Rltk) {
-    // Player movement
+    // 玩家移动
     match ctx.key {
-        None => {} // Nothing happened
+        None => {} // 没有发生任何事情
         Some(key) => match key {
             VirtualKeyCode::Left |
             VirtualKeyCode::Numpad4 |
@@ -297,7 +296,7 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) {
 }
 ```
 
-You should now get something like this when you `cargo run` your project:
+当你 `cargo run` 你的项目时，你应该会得到这样的结果：
 
 ![Screenshot](./c4-s1.gif)
 

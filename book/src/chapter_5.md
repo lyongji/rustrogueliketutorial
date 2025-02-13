@@ -1,25 +1,24 @@
-# Chapter 5 - Field of View
+# 第五章 - 视野
 
 ---
 
-***About this tutorial***
+***关于本教程***
 
-*This tutorial is free and open source, and all code uses the MIT license - so you are free to do with it as you like. My hope is that you will enjoy the tutorial, and make great games!*
+*本教程是免费和开源的，所有代码均使用MIT许可证 - 因此您可以自由地使用它。我希望您会喜欢这个教程，并制作出伟大的游戏！*
 
-*If you enjoy this and would like me to keep writing, please consider supporting [my Patreon](https://www.patreon.com/blackfuture).*
+*如果您喜欢这个教程并希望我继续写作，请考虑支持[我的Patreon](https://www.patreon.com/blackfuture)。*
 
-[![Hands-On Rust](./beta-webBanner.jpg)](https://pragprog.com/titles/hwrust/hands-on-rust/)
+[![实践Rust](./beta-webBanner.jpg)](https://pragprog.com/titles/hwrust/hands-on-rust/)
 
 ---
 
-We have a nicely drawn map, but it shows the whole dungeon! That reduces the usefulness of exploration - if we already know where everything is, why bother exploring? This chapter will add "field of view", and adjust rendering to show the parts of the map we've already discovered. It will also refactor the map into its own structure, rather than just a vector of tiles.
+我们有一个漂亮绘制的地图，但它显示了整个地牢！这减少了探索的有用性 - 如果我们已经知道一切所在，为什么还要费力探索？本章将添加“视野”，并调整渲染以显示我们已经发现的地图部分。它还将重构地图为其自己的结构，而不是仅仅一个瓦片向量。
 
-This chapter starts with the code from chapter 4.
+本章从第4章的代码开始。
 
-# Map refactor
+# 地图重构
 
-We'll keep map-related functions and data together, to keep things clear as we make an ever-more-complicated game. The bulk of this is creating a new `Map` structure, and moving our helper functions to its implementation.
-
+我们将地图相关的函数和数据放在一起，以保持我们在制作越来越复杂的游戏时的清晰度。这部分工作的重点是创建一个新的`Map`结构，并将我们的辅助函数移动到它的实现中。
 ```rust
 use rltk::{ RGB, Rltk, RandomNumberGenerator };
 use super::{Rect};
@@ -69,8 +68,8 @@ impl Map {
         }
     }
 
-    /// Makes a new map using the algorithm from http://rogueliketutorials.com/tutorials/tcod/part-3/
-    /// This gives a handful of random rooms and corridors joining them together.
+    /// 使用来自http://rogueliketutorials.com/tutorials/tcod/part-3/的算法创建新地图
+    /// 这会生成一些随机房间和连接它们的走廊。
     pub fn new_map_rooms_and_corridors() -> Map {
         let mut map = Map{
             tiles : vec![TileType::Wall; 80*50],
@@ -119,12 +118,11 @@ impl Map {
 }
 ```
 
-There's changes in `main` and `player`, too - see the example source for all the details. This has cleaned up our code quite a bit - we can pass a `Map` around, instead of a vector. If we want to teach `Map` to do more things - we have a place to do so.
+`main`和`player`也有一些变化 - 请参见示例源代码以获取所有详细信息。这大大清理了我们的代码 - 我们可以传递一个`Map`，而不是一个向量。如果我们想教`Map`做更多的事情 - 我们有了一个地方可以这样做。
 
-# The field-of-view component
+# 视野组件
 
-Not just the player has limited visibility! Eventually, we'll want monsters to consider what they can see, too. So, since its reusable code, we'll make a `Viewshed` component. (I like the word *viewshed*; it comes from the cartography world - literally "what can I see from here?" - and perfectly describes our problem). We'll give each entity that has a *Viewshed* a list of tile indices they can see. In `components.rs` we add:
-
+不仅玩家有视野限制！最终，我们也希望怪物能考虑它们能看到什么。因此，由于这是可重用的代码，我们将创建一个`Viewshed`组件。（我喜欢“视野”这个词；它来自地图学世界 - 字面上意思是“我从这里能看到什么？”- 完美地描述了我们的问题）。我们将给每个拥有*Viewshed*的实体一个它们能看到的瓦片索引列表。在`components.rs`中我们添加：
 ```rust
 #[derive(Component)]
 pub struct Viewshed {
@@ -132,15 +130,11 @@ pub struct Viewshed {
     pub range : i32
 }
 ```
-
-In `main.rs`, we tell the system about the new component:
-
+在`main.rs`中，我们告诉系统关于这个新组件：
 ```rust
 gs.ecs.register::<Viewshed>();
 ```
-
-Lastly, also in `main.rs` we'll give the `Player` a `Viewshed` component:
-
+最后，在`main.rs`中，我们也给`Player`一个`Viewshed`组件：
 ```rust
 gs.ecs
     .create_entity()
@@ -154,13 +148,11 @@ gs.ecs
     .with(Viewshed{ visible_tiles : Vec::new(), range : 8 })
     .build();
 ```
+玩家现在变得越来越复杂了 - 这是好事，它显示了ECS的用途！
 
-Player is getting quite complicated now - that's good, it shows what an ECS is good for!
+# 一个新系统：通用视野
 
-# A new system: generic viewsheds
-
-We'll start by defining a *system* to take care of this for us. We want this to be generic, so it works for anything that can benefit from knowing what it can see. We create a new file, `visibility_system.rs`:
-
+我们将首先定义一个*系统*来为我们处理这个问题。我们希望这个系统是通用的，所以它适用于任何可以从知道它能看到什么中受益的东西。我们创建一个新的文件，`visibility_system.rs`：
 ```rust
 use specs::prelude::*;
 use super::{Viewshed, Position};
@@ -177,9 +169,7 @@ impl<'a> System<'a> for VisibilitySystem {
     }
 }
 ```
-
-Now we have to adjust `run_systems` in `main.rs` to actually call the system:
-
+现在我们必须调整`main.rs`中的`run_systems`来实际调用系统：
 ```rust
 impl State {
     fn run_systems(&mut self) {
@@ -189,22 +179,18 @@ impl State {
     }
 }
 ```
-
-We also have to tell `main.rs` to use the new module:
-
+我们还必须告诉`main.rs`使用新模块：
 ```rust
 mod visibility_system;
 use visibility_system::VisibilitySystem;
 ```
+这实际上*什么也不做*，但我们已经将一个系统添加到调度器中，一旦我们充实实际绘制视野的代码，它将适用于每个同时具有*Viewshed*和*Position*组件的实体。
 
-This doesn't actually *do* anything, yet - but we've added a system into the dispatcher, and as soon as we flesh out the code to actually plot the visibility, it will apply to every entity that has both a *Viewshed* and a *Position* component.
+# 向RLTK请求视野：特质实现
 
-# Asking RLTK for a Viewshed: Trait Implementation
+RLTK的设计不关心你选择如何布局你的地图：我希望它对任何人都有用，不是每个人都按照本教程的方式制作地图。为了在我们的地图实现和RLTK之间搭建桥梁，它提供了一些*特质*供我们支持。在这个例子中，我们需要`BaseMap`和`Algorithm2D`。别担心，它们足够简单，容易实现。
 
-RLTK is written to not care about how you've chosen to lay out your map: I want it to be useful for anyone, and not everyone does maps the way this tutorial does. To act as a bridge between our map implementation and RLTK, it provides some *traits* for us to support. For this example, we need `BaseMap` and `Algorithm2D`. Don't worry, they are simple enough to implement.
-
-In our `map.rs` file, we add the following:
-
+在我们的`map.rs`文件中，我们添加了以下内容：
 ```rust
 impl Algorithm2D for Map {
     fn dimensions(&self) -> Point {
@@ -212,11 +198,9 @@ impl Algorithm2D for Map {
     }
 }
 ```
+RLTK能够从`dimensions`函数中推断出许多其他特质：点索引（及其逆运算）、边界检查等。我们返回我们已经使用的尺寸，`self.width`和`self.height`。
 
-RLTK is able to figure out a lot of other traits from the `dimensions` function: point indexing (and it's reciprocal), bounds-checks, and similar. We use return the dimensions we're already using, `self.width` and `self.height`.
-
-We also need to support `BaseMap`. We don't need all of it yet, so we're going to let it use defaults. In `map.rs`:
-
+我们还需要支持`BaseMap`。我们目前不需要全部功能，所以我们将使用默认设置。在`map.rs`中：
 ```rust
 impl BaseMap for Map {
     fn is_opaque(&self, idx:usize) -> bool {
@@ -224,12 +208,11 @@ impl BaseMap for Map {
     }
 }
 ```
+`is_opaque`简单地返回瓦片是否为墙，是则返回true，否则返回false。如果我们添加更多类型的瓦片，这将需要扩展，但目前这样可以工作。我们现在将默认留下特质的其他部分（因此不需要输入任何其他内容）。
 
-`is_opaque` simply returns true if the tile is a wall, and false otherwise. This will have to be expanded if/when we add more types of tile, but works for now. We'll leave the rest of the trait on defaults for now (so no need to enter anything else).
+# 向RLTK请求视野：系统
 
-# Asking RLTK for a Viewshed: The System
-
-So going back to `visibility_system.rs`, we now have what we need to request a viewshed from RLTK. We extend our `visibility_system.rs` file to look like this:
+所以回到`visibility_system.rs`，我们现在有向RLTK请求视野所需的一切。我们扩展我们的`visibility_system.rs`文件，使其看起来像这样：
 
 ```rust
 use specs::prelude::*;
@@ -255,19 +238,18 @@ impl<'a> System<'a> for VisibilitySystem {
 }
 ```
 
-There's quite a bit here, and the viewshed is actually the simplest part:
+这里有很多内容，而视野实际上是其中最简单的部分：
 
-* We've added a `ReadExpect<'a, Map>` - meaning that the system should be passed our `Map` for use. We used `ReadExpect`, because not having a map is a failure.
-* In the loop, we first clear the list of visible tiles.
-* Then we call RLTK's `field_of_view` function, providing the starting point (the location of the entity, from `pos`), the range (from the viewshed), and a slightly convoluted "dereference, then get a reference" to unwrap `Map` from the ECS.
-* Finally we use the vector's `retain` method to delete any entries that *don't* meet the criteria we specify. This is a *lambda* or *closure* - it iterates over the vector, passing `p` as a parameter. If p is inside the map boundaries, we keep it. This prevents other functions from trying to access a tile outside of the working map area.
+* 我们添加了一个`ReadExpect<'a, Map>` - 这意味着系统应该传递我们的`Map`以供使用。我们使用`ReadExpect`，因为没有地图是一种失败。
+* 在循环中，我们首先清除可见瓦片的列表。
+* 然后我们调用RLTK的`field_of_view`函数，提供起始点（实体的位置，来自`pos`），范围（来自视野），以及一个稍微复杂的“解引用，然后获取引用”来从ECS中解包`Map`。
+* 最后，我们使用向量的`retain`方法删除任何不符合我们指定条件的条目。这是一个*lambda*或*closure* - 它遍历向量，传递`p`作为参数。如果`p`在地图边界内，我们保留它。这防止其他函数尝试访问工作地图区域之外的瓦片。
 
-This will now run every frame (which is overkill, more on that later) - and store a list of visible tiles.
+这将现在每帧运行一次（这有些过度，稍后会更多关于这个）- 并存储一个可见瓦片的列表。
 
-# Rendering visibility - badly!
+# 渲染视野 - 非常糟糕！
 
-As a first try, we'll change our `draw_map` function to retrieve the map, and the player's viewshed. It will only draw tiles present in the viewshed:
-
+作为一个初步尝试，我们将更改我们的`draw_map`函数以检索地图和玩家的视野。它只会绘制视野中的瓦片：
 ```rust
 pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
     let mut viewsheds = ecs.write_storage::<Viewshed>();
@@ -278,7 +260,7 @@ pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
         let mut y = 0;
         let mut x = 0;
         for tile in map.tiles.iter() {
-            // Render a tile depending upon the tile type
+            // 根据瓦片类型渲染瓦片
             let pt = Point::new(x,y);
             if viewshed.visible_tiles.contains(&pt) {
                 match tile {
@@ -291,7 +273,7 @@ pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
                 }
             }
 
-            // Move the coordinates
+            // 移动坐标
             x += 1;
             if x > 79 {
                 x = 0;
@@ -301,14 +283,13 @@ pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
     }
 }
 ```
+如果你现在运行示例（`cargo run`），它将向你展示玩家能看到什么。没有记忆，性能非常糟糕 - 但它就在那里，而且大致正确。
 
-If you run the example now (`cargo run`), it will show you just what the player can see. There's no memory, and performance is quite awful - but it's there and about right.
+很明显，我们正在正确的轨道上，但我们需要一种更有效的方法来做这件事。如果玩家能记住他们看到的东西，那将是非常好的。
 
-It's clear that we're on the right track, but we need a more efficient way to do things. It would be nice if the player could remember the map as they see it, too.
+# 扩展地图以包含已揭示的瓦片
 
-# Expanding map to include revealed tiles
-
-To simulate map memory, we'll extend our `Map` class to include a `revealed_tiles` structure. It's just a `bool` for each tile on the map - if true, then we know what's there. Our `Map` definition now looks like this:
+为了模拟地图记忆，我们将扩展我们的`Map`类以包含一个`revealed_tiles`结构。它只是地图上每个瓦片的一个`bool`值 - 如果为true，则我们知道那里有什么。我们的`Map`定义现在看起来像这样：
 
 ```rust
 #[derive(Default)]
@@ -321,8 +302,7 @@ pub struct Map {
 }
 ```
 
-We also need to extend the function that fills the map to include the new type. In `new_rooms_and_corridors`, we extend the Map creation to:
-
+我们还需要扩展填充地图的函数以包含新类型。在`new_rooms_and_corridors`中，我们将地图创建扩展为：
 ```rust
 let mut map = Map{
     tiles : vec![TileType::Wall; 80*50],
@@ -332,11 +312,9 @@ let mut map = Map{
     revealed_tiles : vec![false; 80*50]
 };
 ```
+这将为每个瓦片添加一个`false`值。
 
-That adds a `false` value for every tile.
-
-We change the `draw_map` to look at this value, rather than iterating the component each time. The function now looks like this:
-
+我们修改了`draw_map`函数，使其查看这个值，而不是每次都迭代组件。现在，该函数看起来像这样：
 ```rust
 pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
     let map = ecs.fetch::<Map>();
@@ -344,7 +322,7 @@ pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
     let mut y = 0;
     let mut x = 0;
     for (idx,tile) in map.tiles.iter().enumerate() {
-        // Render a tile depending upon the tile type
+        // 根据瓦片类型渲染瓦片
         if map.revealed_tiles[idx] {
             match tile {
                 TileType::Floor => {
@@ -356,7 +334,7 @@ pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
             }
         }
 
-        // Move the coordinates
+        // 移动坐标
         x += 1;
         if x > 79 {
             x = 0;
@@ -365,8 +343,7 @@ pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
     }
 }
 ```
-
-This will render a black screen, because we're never setting any tiles to be revealed! So now we extend the `VisibilitySystem` to know how to mark tiles as revealed. To do this, it has to check to see if an entity is the player - and if it is, it updates the map's revealed status:
+这将渲染一个黑色屏幕，因为我们从未将任何瓦片设置为已揭示！所以现在我们扩展了`VisibilitySystem`，使其知道如何标记瓦片为已揭示。为此，它需要检查一个实体是否是玩家 - 如果是，它会更新地图的已揭示状态：
 
 ```rust
 use specs::prelude::*;
@@ -389,8 +366,8 @@ impl<'a> System<'a> for VisibilitySystem {
             viewshed.visible_tiles.clear();
             viewshed.visible_tiles = field_of_view(Point::new(pos.x, pos.y), viewshed.range, &*map);
             viewshed.visible_tiles.retain(|p| p.x >= 0 && p.x < map.width && p.y >= 0 && p.y < map.height );
-
-            // If this is the player, reveal what they can see
+                
+            //如果这是玩家，显示他们可以看到什么
             let p : Option<&Player> = player.get(ent);
             if let Some(p) = p {
                 for vis in viewshed.visible_tiles.iter() {
@@ -403,14 +380,13 @@ impl<'a> System<'a> for VisibilitySystem {
 }
 ```
 
-The main changes here are that we're getting the Entities list along with components, and obtaining read-only access to the Players storage. We add those to the list of things to iterate in the list, and add a `let p : Option<&Player> = player.get(ent);` to see if this is the player. The rather cryptic `if let Some(p) = p` runs only if there is a `Player` component. Then we calculate the index, and mark it revealed.
+主要的改动是我们获取了实体列表以及组件，并获得了对玩家存储的只读访问。我们将这些添加到要迭代的列表中，并添加了`let p : Option<&Player> = player.get(ent);`来检查这是否是玩家。较为神秘的`if let Some(p) = p`只有在存在`Player`组件时才运行。然后我们计算索引，并标记为已揭示。
 
-If you run (`cargo run`) the project now, it is MASSIVELY faster than the previous version, and remembers where you've been.
+如果你现在运行（`cargo run`），它将比之前的版本快得多，并且能记住你已经去过的地方。
 
-# Speeding it up even more - recalculating visibility when we need to
+# 进一步加快速度 - 仅在需要时重新计算视野
 
-It's still not as efficient as it could be! Lets only update viewsheds when we need to. Lets add a `dirty` flag to our `Viewshed` component:
-
+但它仍然不是最有效的！让我们只在需要时更新视野。我们在`Viewshed`组件中添加一个`dirty`标志：
 ```rust
 #[derive(Component)]
 pub struct Viewshed {
@@ -419,11 +395,9 @@ pub struct Viewshed {
     pub dirty : bool
 }
 ```
+我们还需要更新`main.rs`中的初始化，以表示视野实际上是脏的：`.with(Viewshed{ visible_tiles : Vec::new(), range: 8, dirty: true })`。
 
-We'll also update the initialization in `main.rs` to say that the viewshed is, in fact, dirty: `.with(Viewshed{ visible_tiles : Vec::new(), range: 8, dirty: true })`.
-
-Our system can be extended to check if the `dirty` flag is true, and only recalculate if it is - and set the `dirty` flag to false when it is done. Now we need to set the flag when the player moves - because what they can see has changed! We update `try_move_player` in `player.rs`:
-
+我们可以扩展系统来检查`dirty`标志是否为真，并且只有在为真时才重新计算 - 完成后，将`dirty`标志设置为false。现在我们需要在玩家移动时设置标志 - 因为他们能看到的东西已经改变了！我们在`player.rs`中更新`try_move_player`：
 ```rust
 pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
@@ -442,14 +416,13 @@ pub fn try_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     }
 }
 ```
+这应该已经很熟悉了：我们添加了`viewsheds`来获取写存储，并将其包含在我们正在迭代的组件类型列表中。然后在一个调用中将标志设置为`true`。
 
-This should be pretty familiar by now: we've added `viewsheds` to get write storage, and included it in the list of component types we are iterating. Then one call sets the flag to `true` after a move.
+如果你输入`cargo run`，游戏现在再次运行得非常快。
 
-The game now runs *very* fast once more, if you type `cargo run`.
+# 将我们记得但看不见的部分灰显
 
-# Greying out what we remember, but can't see
-
-One more extension: we'd like to render the parts of the map we know are there but can't currently see. So we add a list of what tiles are currently visible to `Map`:
+最后一个扩展：我们希望渲染我们知道的地图部分，但当前看不见的部分。所以我们在`Map`中添加了一个当前可见的瓦片列表：
 
 ```rust
 #[derive(Default)]
@@ -463,8 +436,7 @@ pub struct Map {
 }
 ```
 
-Our creation method also needs to know to add all false to it, just like before: `visible_tiles : vec![false; 80*50]`. Next, in our `VisibilitySystem` we clear the list of visible tiles before we begin iterating - and mark currently visible tiles as we find them. So our code to run when updating the viewshed looks like this:
-
+我们的创建方法也需要像之前那样将所有值设置为false：`visible_tiles : vec![false; 80*50]`。接下来，在我们的`VisibilitySystem`中，我们在开始迭代之前清除可见瓦片的列表 - 并在我们找到它们时标记当前可见的瓦片。因此，当我们更新视野时运行的代码如下：
 ```rust
 if viewshed.dirty {
     viewshed.dirty = false;
@@ -472,7 +444,7 @@ if viewshed.dirty {
     viewshed.visible_tiles = field_of_view(Point::new(pos.x, pos.y), viewshed.range, &*map);
     viewshed.visible_tiles.retain(|p| p.x >= 0 && p.x < map.width && p.y >= 0 && p.y < map.height );
 
-    // If this is the player, reveal what they can see
+    // 如果这是玩家，显示他们能看到什么
     let _p : Option<&Player> = player.get(ent);
     if let Some(_p) = _p {
         for t in map.visible_tiles.iter_mut() { *t = false };
@@ -484,9 +456,7 @@ if viewshed.dirty {
     }
 }
 ```
-
-Now we adjust the `draw_map` function to handle revealed but not currently visible tiles differently. The new `draw_map` function looks like this:
-
+现在我们调整`draw_map`函数来不同地处理已揭示但当前不可见的瓦片。新的`draw_map`函数如下所示：
 ```rust
 pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
     let map = ecs.fetch::<Map>();
@@ -494,7 +464,7 @@ pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
     let mut y = 0;
     let mut x = 0;
     for (idx,tile) in map.tiles.iter().enumerate() {
-        // Render a tile depending upon the tile type
+        // 根据瓦片类型渲染瓦片
 
         if map.revealed_tiles[idx] {
             let glyph;
@@ -513,7 +483,7 @@ pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
             ctx.set(x, y, fg, RGB::from_f32(0., 0., 0.), glyph);
         }
 
-        // Move the coordinates
+        // 移动坐标
         x += 1;
         if x > 79 {
             x = 0;
@@ -522,8 +492,7 @@ pub fn draw_map(ecs: &World, ctx : &mut Rltk) {
     }
 }
 ```
-
-If you `cargo run` your project, you will now have visible tiles as slightly cyan floors and green walls - and grey as they move out of view. Performance should be great! Congratulations - you now have a nice, working field-of-view system.
+如果您`cargo run`您的项目，您现在将拥有稍微呈青色的可见地板和绿色墙壁 - 以及移出视野时的灰色。性能应该很好！恭喜 - 您现在拥有一个不错的工作视野系统。
 
 ![Screenshot](./c5-s1.gif)
 
